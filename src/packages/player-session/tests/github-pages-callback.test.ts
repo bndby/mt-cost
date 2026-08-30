@@ -13,6 +13,10 @@ const pagesWorkflow = readFileSync(
   join(repoRoot, ".github/workflows/pages.yml"),
   "utf8",
 );
+const privacyHtml = readFileSync(
+  join(repoRoot, "docs/privacy/index.html"),
+  "utf8",
+);
 
 describe("заглушка GitHub Pages", () => {
   test("редиректит query на mtcost://auth/callback без экрана и без хранения токена", () => {
@@ -27,5 +31,17 @@ describe("заглушка GitHub Pages", () => {
     expect(pagesWorkflow).toContain("docs/auth/callback/index.html");
     expect(pagesWorkflow).toContain("_site/auth/callback");
     expect(pagesWorkflow).toContain("actions/deploy-pages");
+  });
+
+  test("workflow выкладывает политику конфиденциальности на /privacy", () => {
+    expect(pagesWorkflow).toContain("docs/privacy/index.html");
+    expect(pagesWorkflow).toContain("_site/privacy");
+  });
+
+  test("политика говорит, что пароль не собирается и своего сервера нет", () => {
+    expect(privacyHtml).toMatch(/Lesta OpenID/);
+    expect(privacyHtml).toMatch(/не собирает/);
+    expect(privacyHtml).toMatch(/Своего сервера у MT Cost нет/);
+    expect(privacyHtml).toContain("https://bndby.github.io/mt-cost/auth/callback");
   });
 });

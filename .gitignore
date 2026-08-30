@@ -1,6 +1,7 @@
 .env
 .env.local
 .env.*.local
+google-service-account.json
 
 # dependencies
 node_modules/
@@ -38,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# 
+/certificates

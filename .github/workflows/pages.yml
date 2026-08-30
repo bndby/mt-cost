@@ -1,6 +1,8 @@
-# Deploy the Lesta OpenID HTTPS callback to GitHub Pages.
-# Live URL: https://bndby.github.io/mt-cost/auth/callback
-name: Deploy OpenID callback
+# Deploy the Lesta OpenID HTTPS callback and the privacy policy.
+# Live URLs:
+#   https://bndby.github.io/mt-cost/auth/callback
+#   https://bndby.github.io/mt-cost/privacy/
+name: Deploy GitHub Pages
 
 on:
   push:
@@ -25,10 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Stage callback
+      - name: Stage Pages
         run: |
-          mkdir -p _site/auth/callback
+          mkdir -p _site/auth/callback _site/privacy
           cp docs/auth/callback/index.html _site/auth/callback/index.html
+          cp docs/privacy/index.html _site/privacy/index.html
           touch _site/.nojekyll
       - name: Setup Pages
         uses: actions/configure-pages@v5
