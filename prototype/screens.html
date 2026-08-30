@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE — экраны «не вошёл» и Оценки</title>
+  <style>
+    :root {
+      --chrome-bg: #1a1b1e;
+      --chrome-fg: #e8e8ea;
+      --chrome-muted: #9a9aa3;
+      --phone-w: 360px;
+      --phone-h: 600px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: var(--chrome-bg);
+      color: var(--chrome-fg);
+    }
+
+    /* Chrome around the phone — not part of the design under review */
+    .page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+      padding: 16px 16px 96px;
+      gap: 16px;
+    }
+    .brief { width: min(720px, 100%); }
+    .brief h1 { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+    .brief p { font-size: 13px; line-height: 1.45; color: var(--chrome-muted); margin: 0 0 16px; }
+    .brief code { font-size: 12px; color: #d2d2d8; }
+    .scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+    .scenes button {
+      background: #2c2d32;
+      color: var(--chrome-fg);
+      border: 1px solid #3d3e45;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .scenes button[aria-current="true"] { background: #e8e8ea; color: #111; border-color: #e8e8ea; }
+    .state-dump {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      background: #111214;
+      border: 1px solid #3d3e45;
+      border-radius: 8px;
+      padding: 12px;
+      white-space: pre;
+      color: #c6c6ce;
+    }
+    .stage { display: flex; justify-content: center; }
+    .phone {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 0 0 10px #0d0e10, 0 24px 60px rgba(0,0,0,.45);
+      position: relative;
+      background: #000;
+    }
+    .screen { position: absolute; inset: 0; display: none; }
+    .screen.is-on { display: flex; flex-direction: column; }
+
+    .status {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 18px 0; font-size: 12px; font-weight: 600; letter-spacing: .02em;
+      flex: 0 0 28px;
+    }
+
+    .shimmer {
+      display: inline-block; height: 1em; width: 4.5em; border-radius: 4px;
+      background: linear-gradient(90deg, var(--shimmer-a, #ddd) 0%, var(--shimmer-b, #f4f4f4) 50%, var(--shimmer-a, #ddd) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.1s linear infinite;
+    }
+    .shimmer.wide { width: 7em; }
+    .shimmer.hero { width: 8.5em; height: .85em; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    button.ui, a.ui {
+      font: inherit; cursor: pointer; border: 0; text-decoration: none;
+    }
+
+    /* ========== A: Hero sum ========== */
+    .a { background: #12141a; color: #f3f1ea; --shimmer-a: #2a2d36; --shimmer-b: #3a3e4a; }
+    .a .status { color: #b8b6ae; }
+    .a-body { flex: 1; display: flex; flex-direction: column; padding: 12px 22px 28px; }
+    .a-top { display: flex; justify-content: flex-end; min-height: 36px; }
+    .a-exit, .a-retry {
+      background: transparent; color: #c9c4b6; font-size: 14px; padding: 8px 0;
+    }
+    .a-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .a-kicker { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: #8c887c; margin-bottom: 10px; }
+    .a-sum { font-size: 56px; font-weight: 560; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .a-sum .shimmer.hero { height: 48px; width: 220px; }
+    .a-cta {
+      width: 100%; background: #e7c46a; color: #1a1408; font-size: 17px; font-weight: 650;
+      padding: 16px; border-radius: 14px; text-align: center; white-space: nowrap;
+    }
+    .a-login-copy { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 36px; }
+    .a-title { font-size: 40px; font-weight: 560; letter-spacing: -.03em; margin: 0 0 8px; }
+    .a-sub { margin: 0; color: #9a968c; font-size: 16px; line-height: 1.4; max-width: 16em; }
+    .a-dock {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+      padding-top: 28px; border-top: 1px solid #2a2d36; margin-top: 8px;
+    }
+    .a-dock > div { min-width: 0; }
+    .a-dock .lbl { display: block; font-size: 11px; color: #8c887c; margin-bottom: 4px; line-height: 1.25; }
+    .a-dock .val { font-size: 14px; font-variant-numeric: tabular-nums; word-break: break-word; }
+    .a-retry-wrap { display: flex; justify-content: flex-start; padding: 8px 0 4px; }
+
+    /* ========== B: Equal slots ========== */
+    .b { background: #f4f5f7; color: #1c1d21; --shimmer-a: #e2e4e8; --shimmer-b: #f7f8fa; }
+    .b .status { color: #1c1d21; }
+    .b-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 16px 12px; font-size: 18px; font-weight: 650;
+    }
+    .b-exit, .b-retry {
+      background: transparent; color: #1a5fd0; font-size: 15px; font-weight: 550; padding: 6px 0;
+    }
+    .b-body { flex: 1; padding: 0 12px 16px; display: flex; flex-direction: column; }
+    .b-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; flex: 1; }
+    .b-tile {
+      background: #fff; border-radius: 16px; padding: 16px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 0 1px 0 rgba(20,20,30,.06);
+    }
+    .b-tile .lbl { font-size: 13px; color: #5c5f6a; }
+    .b-tile .val { font-size: 26px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .b-actions { min-height: 44px; display: flex; justify-content: center; align-items: center; padding-top: 8px; }
+    .b-login { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    .b-login p { color: #5c5f6a; font-size: 15px; line-height: 1.45; max-width: 18em; }
+    .b-cta {
+      background: #1a5fd0; color: #fff; font-size: 16px; font-weight: 600;
+      padding: 14px 28px; border-radius: 24px;
+    }
+
+    /* ========== C: Statement ========== */
+    .c { background: #efe8d8; color: #241c12; --shimmer-a: #e0d6c2; --shimmer-b: #f4eee2; }
+    .c .status { color: #241c12; }
+    .c-sheet { flex: 1; display: flex; flex-direction: column; padding: 8px 28px 24px; }
+    .c-letter { font-family: Palatino, "Palatino Linotype", "Times New Roman", serif; }
+    .c-head { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #6b5e48; margin: 12px 0 28px; }
+    .c-login-title { font-size: 28px; margin: 0 0 12px; font-weight: 500; }
+    .c-login-copy { font-size: 16px; line-height: 1.5; color: #4a4032; margin: 0 0 36px; max-width: 16em; }
+    .c-cta {
+      background: transparent; color: #241c12; font-size: 16px;
+      border-bottom: 1px solid #241c12; padding: 0 0 2px; border-radius: 0; align-self: flex-start;
+    }
+    .c-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 12px 0; font-size: 16px; border-bottom: 1px solid #d7ccb4;
+    }
+    .c-row .lbl { color: #4a4032; }
+    .c-row .val { font-variant-numeric: tabular-nums; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .c-total {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 18px 0 8px; margin-top: 4px; border-top: 2px solid #241c12;
+      font-size: 20px; font-weight: 600;
+    }
+    .c-total .val { font-family: ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+    .c-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 24px; }
+    .c-exit, .c-retry { background: transparent; color: #241c12; font-size: 14px; padding: 4px 0; }
+    .c-retry { border-bottom: 1px solid #241c12; }
+
+    /* Switcher */
+    .switcher {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      background: #f4f4f0; color: #111; border-radius: 999px;
+      padding: 8px 10px; box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      z-index: 20; font-size: 13px; font-weight: 650;
+    }
+    .switcher button {
+      width: 36px; height: 36px; border: 0; border-radius: 50%;
+      background: #111; color: #fff; font-size: 16px; cursor: pointer;
+    }
+    .switcher .label { min-width: 168px; text-align: center; }
+  </style>
+</head>
+<body>
+<!-- Three variants of «не вошёл» and Оценка, switchable via ?variant=&scene=, throwaway HTML: no app route exists yet. -->
+<div class="page">
+  <aside class="brief">
+    <h1>Как выглядят экраны «не вошёл» и Оценки</h1>
+    <p>
+      Выкидной прототип: иерархия, подписи, «выйти» и «повторить».
+      Стрелки — макет, кнопки — режим слотов.
+    </p>
+    <div class="scenes" id="scenes"></div>
+  </aside>
+  <div class="stage">
+    <div class="phone" id="phone" aria-label="макет телефона"></div>
+  </div>
+  <div class="state-dump" id="state"></div>
+</div>
+<div class="switcher" id="switcher">
+  <button type="button" id="prev" aria-label="Предыдущий вариант">←</button>
+  <div class="label" id="switcher-label"></div>
+  <button type="button" id="next" aria-label="Следующий вариант">→</button>
+</div>
+<script>
+  const VARIANTS = [
+    { key: "A", name: "Герой-сумма" },
+    { key: "B", name: "Равная сетка" },
+    { key: "C", name: "Выписка" },
+  ];
+  const SCENES = [
+    { key: "signed-out", name: "не вошёл" },
+    { key: "waiting", name: "Оценка · ждём" },
+    { key: "success", name: "Оценка · числа" },
+    { key: "empty", name: "Оценка · пустой Ангар" },
+    { key: "failure", name: "Оценка · прочерки" },
+  ];
+  const DATA = {
+    success: { tanks: "23", tanksRub: "48 360 ₽", otherRub: "2 184 ₽", sumRub: "50 544 ₽" },
+    empty: { tanks: "0", tanksRub: "0 ₽", otherRub: "312 ₽", sumRub: "312 ₽" },
+  };
+
+  function params() {
+    const q = new URLSearchParams(location.search);
+    const variant = VARIANTS.some((v) => v.key === q.get("variant")) ? q.get("variant") : "A";
+    const scene = SCENES.some((s) => s.key === q.get("scene")) ? q.get("scene") : "success";
+    return { variant, scene };
+  }
+  function setParams(next) {
+    const cur = params();
+    const merged = { ...cur, ...next };
+    const q = new URLSearchParams(merged);
+    history.replaceState(null, "", "?" + q.toString());
+    render();
+  }
+  function slot(scene, key) {
+    if (scene === "waiting") return `<span class="shimmer${key === "sumRub" ? " hero" : ""}"></span>`;
+    if (scene === "failure") return "—";
+    const row = scene === "empty" ? DATA.empty : DATA.success;
+    return row[key];
+  }
+  function statusBar(theme) {
+    return `<div class="status" style="color:inherit"><span>16:00</span><span>LTE  84%</span></div>`;
+  }
+
+  function viewA(scene) {
+    const signedOut = scene === "signed-out";
+    const fail = scene === "failure";
+    const logged = !signedOut;
+    return `<div class="screen is-on a">
+      ${statusBar()}
+      <div class="a-body">
+        <div class="a-top">${logged ? `<button class="ui a-exit" data-act="logout">Выйти</button>` : ""}</div>
+        ${signedOut ? `
+          <div class="a-login-copy">
+            <h2 class="a-title">Оценка</h2>
+            <p class="a-sub">Имущество аккаунта Мира танков в рублях.</p>
+          </div>
+          <button class="ui a-cta" data-act="login">Войти через Lesta</button>
+        ` : `
+          <div class="a-hero">
+            <div class="a-kicker">Оценка</div>
+            <div class="a-sum">${slot(scene, "sumRub")}</div>
+            ${fail ? `<div class="a-retry-wrap"><button class="ui a-retry" data-act="retry">Повторить</button></div>` : ""}
+          </div>
+          <div class="a-dock">
+            <div><span class="lbl">Танки</span><span class="val">${slot(scene, "tanks")}</span></div>
+            <div><span class="lbl">Танки, ₽</span><span class="val">${slot(scene, "tanksRub")}</span></div>
+            <div><span class="lbl">Прочее имущество</span><span class="val">${slot(scene, "otherRub")}</span></div>
+          </div>
+        `}
+      </div>
+    </div>`;
+  }
+
+  function viewB(scene) {
+    const signedOut = scene === "signed-out";
+    const fail = scene === "failure";
+    const tiles = [
+      ["Танки", slot(scene, "tanks")],
+      ["Танки", slot(scene, "tanksRub")],
+      ["Прочее имущество", slot(scene, "otherRub")],
+      ["Сумма", slot(scene, "sumRub")],
+    ].map(([lbl, val]) => `<div class="b-tile"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`).join("");
+    return `<div class="screen is-on b">
+      ${statusBar()}
+      <div class="b-bar">
+        <span>MT Cost</span>
+        ${signedOut ? "<span></span>" : `<button class="ui b-exit" data-act="logout">Выйти</button>`}
+      </div>
+      <div class="b-body">
+        ${signedOut ? `
+          <div class="b-login">
+            <p>Чтобы увидеть оценку, войдите через Lesta OpenID.</p>
+            <button class="ui b-cta" data-act="login">Lesta OpenID</button>
+          </div>
+        ` : `
+          <div class="b-grid">${tiles}</div>
+          <div class="b-actions">${fail ? `<button class="ui b-retry" data-act="retry">Повторить</button>` : ""}</div>
+        `}
+      </div>
+    </div>`;
+  }
+
+  function viewC(scene) {
+    const signedOut = scene === "signed-out";
+    const fail = scene === "failure";
+    const rows = [
+      ["Танки, шт", slot(scene, "tanks")],
+      ["Танки", slot(scene, "tanksRub")],
+      ["Прочее имущество", slot(scene, "otherRub")],
+    ].map(([lbl, val]) => `<div class="c-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`).join("");
+    return `<div class="screen is-on c">
+      ${statusBar()}
+      <div class="c-sheet c-letter">
+        <div class="c-head">Оценка имущества</div>
+        ${signedOut ? `
+          <h2 class="c-login-title">Нужен вход</h2>
+          <p class="c-login-copy">Lesta OpenID. Пароль вводится на стороне Lesta, не здесь.</p>
+          <button class="ui c-cta" data-act="login">Войти</button>
+        ` : `
+          ${rows}
+          <div class="c-total"><span>Оценка</span><span class="val">${slot(scene, "sumRub")}</span></div>
+          <div class="c-foot">
+            <button class="ui c-exit" data-act="logout">Выйти</button>
+            ${fail ? `<button class="ui c-retry" data-act="retry">Повторить</button>` : "<span></span>"}
+          </div>
+        `}
+      </div>
+    </div>`;
+  }
+
+  const views = { A: viewA, B: viewB, C: viewC };
+
+  function dump({ variant, scene }) {
+    const v = VARIANTS.find((x) => x.key === variant);
+    const logged = scene !== "signed-out";
+    const slots = !logged ? "нет" : scene === "waiting" ? "анимация" : scene === "failure" ? "прочерки" : "числа";
+    const lines = [
+      `variant: ${variant} (${v.name})`,
+      `scene:   ${scene}`,
+      `игрок:   ${logged ? "вошёл" : "не вошёл"}`,
+      `слоты:   ${slots}`,
+      `выйти:   ${logged ? "есть" : "нет"}`,
+      `повторить: ${scene === "failure" ? "есть" : "нет"}`,
+      `custom tab: только по нажатию входа`,
+    ];
+    return lines.join("\n");
+  }
+
+  function render() {
+    const { variant, scene } = params();
+    const v = VARIANTS.find((x) => x.key === variant);
+    document.getElementById("phone").innerHTML = views[variant](scene);
+    document.getElementById("switcher-label").textContent = `${variant} (${v.name})`;
+    document.getElementById("state").textContent = dump({ variant, scene });
+    const scenes = document.getElementById("scenes");
+    scenes.innerHTML = SCENES.map((s) =>
+      `<button type="button" data-scene="${s.key}"${s.key === scene ? ' aria-current="true"' : ""}>${s.name}</button>`
+    ).join("");
+  }
+
+  document.getElementById("scenes").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-scene]");
+    if (b) setParams({ scene: b.dataset.scene });
+  });
+  document.getElementById("phone").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "login" || b.dataset.act === "retry") setParams({ scene: "waiting" });
+    if (b.dataset.act === "logout") setParams({ scene: "signed-out" });
+  });
+  function cycle(dir) {
+    const { variant } = params();
+    const i = VARIANTS.findIndex((v) => v.key === variant);
+    const next = VARIANTS[(i + dir + VARIANTS.length) % VARIANTS.length];
+    setParams({ variant: next.key });
+  }
+  document.getElementById("prev").onclick = () => cycle(-1);
+  document.getElementById("next").onclick = () => cycle(1);
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (e.key === "ArrowLeft") cycle(-1);
+    if (e.key === "ArrowRight") cycle(1);
+  });
+  render();
+</script>
+</body>
+</html>
