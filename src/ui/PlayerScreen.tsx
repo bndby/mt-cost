@@ -7,6 +7,7 @@ import {
   initialWindowMetrics,
 } from "react-native-safe-area-context";
 import type { Screen } from "../packages/player-session";
+import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
 import { RubAmount } from "./RubAmount";
 
 function formatCount(value: number): string {
@@ -83,6 +84,15 @@ export function PlayerScreen({
   onSignOut: () => void;
   onRetry: () => void;
 }) {
+  if (isUiPrototype) {
+    return (
+      <ValuationPrototype
+        onSignOut={onSignOut}
+        showSignOut={screen.kind === "valuation"}
+      />
+    );
+  }
+
   if (screen.kind === "signed-out") {
     return (
       <View style={styles.body}>
