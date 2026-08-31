@@ -1,13 +1,13 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Animated, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+} from "react-native-safe-area-context";
 import type { Screen } from "../packages/player-session";
-
-function formatRub(value: number): string {
-  return `${new Intl.NumberFormat("ru-RU", {
-    maximumFractionDigits: 3,
-  }).format(value)} ₽`;
-}
+import { RubAmount } from "./RubAmount";
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
@@ -26,16 +26,22 @@ function SlotValue({
   if (slots.kind === "dashes") {
     return <Text style={kind === "sum" ? styles.sum : styles.dockValue}>—</Text>;
   }
-  const text =
+  if (kind === "tanks") {
+    return (
+      <Text style={styles.dockValue}>{formatCount(slots.tankCount)}</Text>
+    );
+  }
+  const rubles =
     kind === "sum"
-      ? formatRub(slots.sumRub)
-      : kind === "tanks"
-        ? formatCount(slots.tankCount)
-        : kind === "tanksRub"
-          ? formatRub(slots.tanksRub)
-          : formatRub(slots.otherRub);
+      ? slots.sumRub
+      : kind === "tanksRub"
+        ? slots.tanksRub
+        : slots.otherRub;
   return (
-    <Text style={kind === "sum" ? styles.sum : styles.dockValue}>{text}</Text>
+    <RubAmount
+      rubles={rubles}
+      style={kind === "sum" ? styles.sum : styles.dockValue}
+    />
   );
 }
 
@@ -128,10 +134,12 @@ export function PlayerScreen({
 
 export function AppChrome({ children }: { children: ReactNode }) {
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
-      {children}
-    </SafeAreaView>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SafeAreaView style={styles.screen}>
+        <StatusBar style="light" />
+        {children}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
