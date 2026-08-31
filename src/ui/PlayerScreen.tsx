@@ -12,6 +12,7 @@ import type {
   Screen,
   ValuationSnapshot,
 } from "../packages/player-session";
+import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
 import { RubAmount } from "./RubAmount";
 
 function formatCount(value: number): string {
@@ -132,6 +133,15 @@ export function PlayerScreen({
   onRetry: () => void;
   onChooseDisplayCurrency: (label: string) => void;
 }) {
+  if (isUiPrototype) {
+    return (
+      <ValuationPrototype
+        onSignOut={onSignOut}
+        showSignOut={screen.kind === "valuation"}
+      />
+    );
+  }
+
   if (screen.kind === "signed-out") {
     return (
       <View style={styles.body}>
