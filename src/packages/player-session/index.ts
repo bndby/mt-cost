@@ -7,12 +7,15 @@ export {
 export type {
   AccountSnapshot,
   Clock,
+  ColumnRow,
   CustomTab,
   CustomTabResult,
+  DisplayChip,
   LestaClient,
   PlayerSession,
   PlayerSessionConfig,
   RentedTank,
   Screen,
+  ValuationSnapshot,
   VehiclePrice,
 } from "./lib/session";

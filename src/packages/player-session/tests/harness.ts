@@ -12,6 +12,15 @@ import type {
 
 export const APPLICATION_ID = "test-application-id";
 
+export const SESSION_RATES = {
+  silverPerGold: 400,
+  goldPackGold: 50_000,
+  goldPackRubles: 7_800,
+  goldPerBond: 1,
+  rubPerByn: 28.1618,
+  rubPerUsd: 85.6007,
+} as const;
+
 export class FakeClock implements Clock {
   constructor(public nowUnixSeconds = 1_700_000_000) {}
 
@@ -42,11 +51,15 @@ export class FakeLesta implements LestaClient {
   account: AccountOrError = {
     silver: 0,
     gold: 0,
+    bonds: 0,
     hangarTankIds: [],
     rented: [],
   };
   vehicles: VehiclePrice[] | Error = [];
   accountGate: Promise<void> = Promise.resolve();
+  clan: string | null | Error = null;
+  clanGate: Promise<void> = Promise.resolve();
+  clanCalls = 0;
 
   async logout(accessToken: string): Promise<void> {
     this.logoutCalls.push(accessToken);
@@ -68,6 +81,13 @@ export class FakeLesta implements LestaClient {
     if (this.vehicles instanceof Error) throw this.vehicles;
     return this.vehicles;
   }
+
+  async fetchClanTag(): Promise<string | null> {
+    this.clanCalls += 1;
+    await this.clanGate;
+    if (this.clan instanceof Error) throw this.clan;
+    return this.clan;
+  }
 }
 
 type AccountOrError = AccountSnapshot | Error;
@@ -80,7 +100,7 @@ export function createHarness() {
     clock,
     customTab,
     lesta,
-    config: { applicationId: APPLICATION_ID },
+    config: { applicationId: APPLICATION_ID, ...SESSION_RATES },
   });
   return { session, clock, customTab, lesta };
 }
@@ -106,13 +126,14 @@ export function okCallback(params: {
   accessToken?: string;
   expiresAt?: number;
   accountId?: number;
+  nickname?: string;
 } = {}) {
   const search = new URLSearchParams({
     status: "ok",
     access_token: params.accessToken ?? "live-token",
     expires_at: String(params.expiresAt ?? 1_700_000_000 + 14 * 24 * 3600),
     account_id: String(params.accountId ?? 42),
-    nickname: "Player",
+    nickname: params.nickname ?? "Player",
   });
   return `mtcost://auth/callback?${search.toString()}`;
 }
