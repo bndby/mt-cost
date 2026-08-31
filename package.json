@@ -6,6 +6,7 @@
   "scripts": {
     "start": "expo start",
     "prototype": "EXPO_PUBLIC_UI_PROTOTYPE=1 expo start",
+    "prototype:web": "python3 -m http.server 8765 --directory src/ui/prototype",
     "android": "expo run:android",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

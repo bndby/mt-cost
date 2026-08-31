@@ -25,7 +25,13 @@ function Section({
         <RubAmount rubles={total} style={styles.sectionTotal} />
       </View>
       {lines.map((line) => (
-        <PrototypeLine key={line.name} {...line} />
+        <PrototypeLine
+          key={line.name}
+          name={line.name}
+          count={line.count}
+          value={line.rubles}
+          symbol="₽"
+        />
       ))}
     </View>
   );
@@ -41,7 +47,13 @@ export function VariantB() {
       <ScrollView contentContainerStyle={styles.list}>
         <View style={styles.section}>
           {currencies.map((line) => (
-            <PrototypeLine key={line.name} {...line} />
+            <PrototypeLine
+              key={line.name}
+              name={line.name}
+              count={line.count}
+              value={line.rubles}
+              symbol="₽"
+            />
           ))}
         </View>
         <Section title="Премиумные танки" lines={premiumTanks} />

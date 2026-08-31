@@ -1,6 +1,6 @@
 import { Text } from "react-native";
-import { RubAmount } from "../RubAmount";
-import { formatCount, type PrototypeLine as Line } from "./fixture";
+import { formatCount } from "./fixture";
+import { PrototypeAmount } from "./PrototypeAmount";
 
 const NAME = {
   color: "#f3f1ea",
@@ -20,11 +20,21 @@ const PRICE: {
   fontVariant: ["tabular-nums"],
 };
 
-export function PrototypeLine({ name, count, rubles }: Line) {
+export function PrototypeLine({
+  name,
+  count,
+  value,
+  symbol,
+}: {
+  name: string;
+  count: number;
+  value: number;
+  symbol: string;
+}) {
   return (
     <Text style={NAME}>
       {name} ({formatCount(count)}) ={" "}
-      <RubAmount rubles={rubles} style={PRICE} />
+      <PrototypeAmount value={value} symbol={symbol} style={PRICE} />
     </Text>
   );
 }

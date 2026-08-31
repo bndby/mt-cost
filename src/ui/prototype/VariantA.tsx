@@ -21,13 +21,31 @@ export function VariantA() {
         contentContainerStyle={styles.columnInner}
       >
         {currencies.map((line) => (
-          <PrototypeLine key={line.name} {...line} />
+          <PrototypeLine
+            key={line.name}
+            name={line.name}
+            count={line.count}
+            value={line.rubles}
+            symbol="₽"
+          />
         ))}
         {premiumTanks.map((line) => (
-          <PrototypeLine key={line.name} {...line} />
+          <PrototypeLine
+            key={line.name}
+            name={line.name}
+            count={line.count}
+            value={line.rubles}
+            symbol="₽"
+          />
         ))}
         {researchableTanks.map((line) => (
-          <PrototypeLine key={line.name} {...line} />
+          <PrototypeLine
+            key={line.name}
+            name={line.name}
+            count={line.count}
+            value={line.rubles}
+            symbol="₽"
+          />
         ))}
       </ScrollView>
     </View>

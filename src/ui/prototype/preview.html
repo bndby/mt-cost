@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Прототип экрана Оценки</title>
+    <style>
+      :root {
+        --bg: #12141a;
+        --text: #f3f1ea;
+        --muted: #8c887c;
+        --button: #c9c4b6;
+        --line: #2a2d36;
+        --price: #ffffff;
+        --band: #1a1d24;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: #0b0c10;
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 16px 40px;
+        gap: 16px;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+        max-width: 360px;
+        text-align: center;
+        line-height: 1.4;
+      }
+      .phone {
+        width: 360px;
+        height: 780px;
+        background: var(--bg);
+        border-radius: 28px;
+        border: 1px solid #2a2d36;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 12px 22px 12px;
+        box-shadow: 0 24px 60px #0008;
+      }
+      .top {
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-shrink: 0;
+      }
+      .top span { color: var(--button); font-size: 14px; }
+      .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .stage[hidden] { display: none; }
+
+      .kicker {
+        font-size: 13px;
+        letter-spacing: 0.4px;
+        color: var(--muted);
+      }
+      .sum {
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -1.5px;
+      }
+      .sum.hero { font-size: 56px; line-height: 60px; }
+      .sum.compact { font-size: 40px; line-height: 44px; letter-spacing: -1.2px; }
+      .kopecks { font-size: 0.7em; opacity: 0.55; }
+
+      .line {
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--text);
+      }
+      .price {
+        color: var(--price);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* A — Чек */
+      .a-root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .a-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+      .a-hero .kicker { margin-bottom: 10px; }
+      .a-col {
+        max-height: 42%;
+        overflow: auto;
+        border-top: 1px solid var(--line);
+        margin-top: 8px;
+        padding: 16px 0 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* B — Смета */
+      .b-root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .b-hero {
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--line);
+        flex-shrink: 0;
+      }
+      .b-hero .kicker { margin-bottom: 6px; }
+      .b-list {
+        flex: 1;
+        overflow: auto;
+        padding: 16px 0 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .section { display: flex; flex-direction: column; gap: 8px; }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 2px;
+      }
+      .section-title { font-size: 11px; color: var(--muted); line-height: 14px; }
+      .section-total { font-size: 11px; color: var(--price); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+      /* C — Две корзины */
+      .c-root {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding-bottom: 8px;
+      }
+      .c-hero .kicker { margin-bottom: 6px; }
+      .money {
+        display: flex;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .money button {
+        flex: 1;
+        border: 0;
+        border-radius: 10px;
+        padding: 8px 4px;
+        background: #1a1d24;
+        color: #9a968c;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .money button.on {
+        background: #e7c46a;
+        color: #1a1408;
+      }
+      .currency-band {
+        background: var(--band);
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .switcher-space { height: 108px; flex-shrink: 0; }
+      .switcher {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .dump {
+        align-self: stretch;
+        background: #000000aa;
+        border-radius: 8px;
+        padding: 6px 10px;
+        color: #9a968c;
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        word-break: break-word;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        background: #f3f1ea;
+        border-radius: 999px;
+        padding: 6px;
+        gap: 4px;
+        box-shadow: 0 4px 16px #0008;
+      }
+      .bar button {
+        width: 40px;
+        height: 36px;
+        border: 0;
+        background: transparent;
+        color: #12141a;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .bar .label {
+        color: #12141a;
+        font-size: 13px;
+        font-weight: 700;
+        min-width: 128px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="hint">
+      Три варианта экрана Оценки. Стрелки внизу или клавиши ← →.
+      Ссылки: <a href="?variant=A" style="color:#e7c46a">A</a>
+      · <a href="?variant=B" style="color:#e7c46a">B</a>
+      · <a href="?variant=C" style="color:#e7c46a">C</a>
+    </p>
+    <div class="phone" id="phone">
+      <div class="top"><span>прототип</span></div>
+      <div class="stage" data-variant="A"></div>
+      <div class="stage" data-variant="B" hidden></div>
+      <div class="stage" data-variant="C" hidden></div>
+      <div class="switcher-space"></div>
+      <div class="switcher">
+        <div class="dump" id="dump"></div>
+        <div class="bar">
+          <button type="button" id="prev" aria-label="Предыдущий">←</button>
+          <div class="label" id="label"></div>
+          <button type="button" id="next" aria-label="Следующий">→</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      const VARIANTS = [
+        { key: "A", name: "Чек" },
+        { key: "B", name: "Смета" },
+        { key: "C", name: "Две корзины" },
+      ];
+      const nick = "Red_Baron";
+      const clanTag = "RED";
+      const kicker = `[${clanTag}] ${nick}`;
+      const currencies = [
+        { name: "Боны", count: 12400, rubles: 1934.4 },
+        { name: "Золото", count: 8150, rubles: 1271.4 },
+        { name: "Серебро", count: 12450000, rubles: 4855.5 },
+      ];
+      const premiumTanks = [
+        { name: "Type 59", count: 1, rubles: 1170 },
+        { name: "Löwe", count: 1, rubles: 1950 },
+        { name: "Объект 279 (р)", count: 1, rubles: 2340 },
+        { name: "Т-22 ср.", count: 1, rubles: 1840.8 },
+      ];
+      const researchableTanks = [
+        { name: "ИС-7", count: 1, rubles: 2379 },
+        { name: "Объект 140", count: 1, rubles: 2379 },
+        { name: "Т-54", count: 1, rubles: 1390.35 },
+        { name: "ИС-3", count: 1, rubles: 998.4 },
+        { name: "Объект 277", count: 1, rubles: 2379 },
+        { name: "Т-62А", count: 1, rubles: 1390.35 },
+        { name: "ИС-4", count: 1, rubles: 2379 },
+        { name: "Т-34-85", count: 1, rubles: 528.84 },
+        { name: "КВ-1С", count: 1, rubles: 390.0 },
+        { name: "Т-44", count: 1, rubles: 1050.6 },
+      ];
+      const all = [...currencies, ...premiumTanks, ...researchableTanks];
+      const sumRub = all.reduce((s, l) => s + l.rubles, 0);
+      const fixtureDump = {
+        kicker,
+        sumRub,
+        currencyLines: currencies.length,
+        premiumTanks: premiumTanks.length,
+        researchableTanks: researchableTanks.length,
+      };
+
+      // Snapshots from .env (CBR 2026-08-31): RUB_PER_USD, RUB_PER_BYN
+      const MONEY = [
+        { id: "rub", label: "рос. рубль", symbol: "₽", rubPerUnit: 1 },
+        { id: "byn", label: "бел. рубль", symbol: "Br", rubPerUnit: 28.1618 },
+        { id: "usd", label: "доллар", symbol: "$", rubPerUnit: 85.6007 },
+      ];
+
+      function currentMoney() {
+        const id = new URLSearchParams(location.search).get("money") || "rub";
+        return MONEY.find((item) => item.id === id) ?? MONEY[0];
+      }
+      function setMoney(id) {
+        const url = new URL(location.href);
+        url.searchParams.set("money", id);
+        history.replaceState(null, "", url);
+        render();
+      }
+      function toDisplay(rubles, money) {
+        return rubles / money.rubPerUnit;
+      }
+
+      function formatCount(value) {
+        return new Intl.NumberFormat("ru-RU").format(value);
+      }
+      function amountHtml(value, extraClass, symbol) {
+        const totalKopecks = Math.round(value * 100);
+        const sign = totalKopecks < 0 ? "-" : "";
+        const abs = Math.abs(totalKopecks);
+        const integer = `${sign}${new Intl.NumberFormat("ru-RU").format(Math.floor(abs / 100))}`;
+        const kopecks = String(abs % 100).padStart(2, "0");
+        return `<span class="${extraClass}">${integer}<span class="kopecks">,${kopecks}</span> ${symbol}</span>`;
+      }
+      function lineHtml(line, money) {
+        return `<div class="line">${line.name} (${formatCount(line.count)}) = ${amountHtml(toDisplay(line.rubles, money), "price", money.symbol)}</div>`;
+      }
+      function linesHtml(lines, money) {
+        return lines.map((line) => lineHtml(line, money)).join("");
+      }
+      function basketSummary(name, lines) {
+        if (!lines.length) return null;
+        return {
+          name,
+          count: lines.reduce((s, l) => s + l.count, 0),
+          rubles: lines.reduce((s, l) => s + l.rubles, 0),
+        };
+      }
+      const summaryRows = [
+        ...currencies,
+        basketSummary("Премиумные танки", premiumTanks),
+        basketSummary("Прокачиваемые танки", researchableTanks),
+      ].filter(Boolean);
+      function sectionHtml(title, lines, money) {
+        if (!lines.length) return "";
+        const total = lines.reduce((s, l) => s + l.rubles, 0);
+        return `<div class="section">
+          <div class="section-head">
+            <div class="section-title">${title}</div>
+            ${amountHtml(toDisplay(total, money), "section-total", money.symbol)}
+          </div>
+          ${linesHtml(lines, money)}
+        </div>`;
+      }
+
+      function paintAB() {
+        const rub = MONEY[0];
+        document.querySelector('[data-variant="A"]').innerHTML = `
+          <div class="a-root">
+            <div class="a-hero">
+              <div class="kicker">${kicker}</div>
+              ${amountHtml(sumRub, "sum hero", rub.symbol)}
+            </div>
+            <div class="a-col">
+              ${linesHtml(currencies, rub)}
+              ${linesHtml(premiumTanks, rub)}
+              ${linesHtml(researchableTanks, rub)}
+            </div>
+          </div>`;
+        document.querySelector('[data-variant="B"]').innerHTML = `
+          <div class="b-root">
+            <div class="b-hero">
+              <div class="kicker">${kicker}</div>
+              ${amountHtml(sumRub, "sum compact", rub.symbol)}
+            </div>
+            <div class="b-list">
+              <div class="section">${linesHtml(currencies, rub)}</div>
+              ${sectionHtml("Премиумные танки", premiumTanks, rub)}
+              ${sectionHtml("Прокачиваемые танки", researchableTanks, rub)}
+            </div>
+          </div>`;
+      }
+
+      function paintC() {
+        const money = currentMoney();
+        const chips = MONEY.map(
+          (item) =>
+            `<button type="button" data-money="${item.id}" class="${item.id === money.id ? "on" : ""}">${item.label}</button>`,
+        ).join("");
+        document.querySelector('[data-variant="C"]').innerHTML = `
+          <div class="c-root">
+            <div class="c-hero">
+              <div class="kicker">${kicker}</div>
+              ${amountHtml(toDisplay(sumRub, money), "sum compact", money.symbol)}
+              <div class="money">${chips}</div>
+            </div>
+            <div class="currency-band">${linesHtml(summaryRows, money)}</div>
+          </div>`;
+        document.querySelectorAll(".money button").forEach((button) => {
+          button.addEventListener("click", () => setMoney(button.dataset.money));
+        });
+      }
+
+      function currentKey() {
+        const v = new URLSearchParams(location.search).get("variant") || "A";
+        return VARIANTS.some((item) => item.key === v) ? v : "A";
+      }
+      function setVariant(key) {
+        const url = new URL(location.href);
+        url.searchParams.set("variant", key);
+        history.replaceState(null, "", url);
+        render();
+      }
+      function cycle(step) {
+        const keys = VARIANTS.map((item) => item.key);
+        const i = keys.indexOf(currentKey());
+        setVariant(keys[(i + step + keys.length) % keys.length]);
+      }
+      function render() {
+        const key = currentKey();
+        const meta = VARIANTS.find((item) => item.key === key);
+        const money = currentMoney();
+        paintAB();
+        paintC();
+        document.querySelectorAll(".stage").forEach((el) => {
+          el.hidden = el.dataset.variant !== key;
+        });
+        document.getElementById("label").textContent = `${meta.key} (${meta.name})`;
+        document.getElementById("dump").textContent =
+          "PROTOTYPE " + JSON.stringify({ variant: key, money: money.id, ...fixtureDump });
+      }
+
+      document.getElementById("prev").onclick = () => cycle(-1);
+      document.getElementById("next").onclick = () => cycle(1);
+      document.addEventListener("keydown", (event) => {
+        const tag = event.target && event.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) return;
+        if (event.key === "ArrowLeft") cycle(-1);
+        if (event.key === "ArrowRight") cycle(1);
+      });
+      render();
+    </script>
+  </body>
+</html>

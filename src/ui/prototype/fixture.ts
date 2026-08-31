@@ -36,12 +36,41 @@ export const researchableTanks: PrototypeLine[] = [
   { name: "Т-44", count: 1, rubles: 1_050.6 },
 ];
 
+export function basketSummary(
+  name: string,
+  lines: PrototypeLine[],
+): PrototypeLine | null {
+  if (lines.length === 0) return null;
+  return {
+    name,
+    count: lines.reduce((sum, line) => sum + line.count, 0),
+    rubles: lines.reduce((sum, line) => sum + line.rubles, 0),
+  };
+}
+
 const allLines = [...currencies, ...premiumTanks, ...researchableTanks];
 
 export const sumRub = allLines.reduce((sum, line) => sum + line.rubles, 0);
 
 export function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
+}
+
+export type DisplayMoney = {
+  id: "rub" | "byn" | "usd";
+  label: string;
+  symbol: string;
+  rubPerUnit: number;
+};
+
+export const DISPLAY_MONEY: DisplayMoney[] = [
+  { id: "rub", label: "рос. рубль", symbol: "₽", rubPerUnit: 1 },
+  { id: "byn", label: "бел. рубль", symbol: "Br", rubPerUnit: 28.1618 },
+  { id: "usd", label: "доллар", symbol: "$", rubPerUnit: 85.6007 },
+];
+
+export function toDisplay(rubles: number, money: DisplayMoney): number {
+  return rubles / money.rubPerUnit;
 }
 
 export const fixtureDump = {

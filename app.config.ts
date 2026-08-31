@@ -31,6 +31,8 @@ const config: ExpoConfig = {
       projectId: "ebf6a76d-6556-4ecb-93ab-f5af979ae0df",
     },
     lestaApplicationId: process.env.LESTA_APPLICATION_ID ?? "",
+    rubPerUsd: process.env.RUB_PER_USD ?? "85.6007",
+    rubPerByn: process.env.RUB_PER_BYN ?? "28.1618",
   },
 };
 
