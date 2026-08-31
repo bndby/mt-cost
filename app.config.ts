@@ -31,6 +31,12 @@ const config: ExpoConfig = {
       projectId: "ebf6a76d-6556-4ecb-93ab-f5af979ae0df",
     },
     lestaApplicationId: process.env.LESTA_APPLICATION_ID ?? "",
+    silverPerGold: process.env.SILVER_PER_GOLD ?? "400",
+    goldPackGold: process.env.GOLD_PACK_GOLD ?? "50000",
+    goldPackRubles: process.env.GOLD_PACK_RUBLES ?? "7800",
+    goldPerBond: process.env.GOLD_PER_BOND ?? "1",
+    rubPerUsd: process.env.RUB_PER_USD ?? "85.6007",
+    rubPerByn: process.env.RUB_PER_BYN ?? "28.1618",
   },
 };
 

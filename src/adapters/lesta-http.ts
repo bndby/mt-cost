@@ -113,6 +113,7 @@ export function createHttpLesta(deps: {
       return {
         silver: Number(privateBlock.credits ?? 0),
         gold: Number(privateBlock.gold ?? 0),
+        bonds: Number(privateBlock.bonds ?? 0),
         hangarTankIds: hangar,
         rented: parseRented(privateBlock.rented),
       };
@@ -141,6 +142,21 @@ export function createHttpLesta(deps: {
         }
       }
       return prices;
+    },
+
+    async fetchClanTag(accountId): Promise<string | null> {
+      const body = await getJson("/wot/clans/accountinfo/", {
+        account_id: String(accountId),
+        fields: "clan.tag",
+      });
+      const accounts = asRecord(body.data);
+      const row = accounts?.[String(accountId)];
+      if (body.status !== "ok" || accounts == null) throw new Error("clan");
+      if (row == null) return null;
+      const record = asRecord(row);
+      const clan = asRecord(record?.clan);
+      const tag = clan?.tag;
+      return typeof tag === "string" && tag.length > 0 ? tag : null;
     },
   };
 }

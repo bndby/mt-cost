@@ -1,13 +1,18 @@
-import type { AccountSnapshot, RentedTank, VehiclePrice } from "./session";
+import type {
+  AccountSnapshot,
+  ColumnRow,
+  PlayerSessionConfig,
+  RentedTank,
+  VehiclePrice,
+} from "./session";
 
-/** Official in-game rate: 1 gold = 400 silver. */
-const SILVER_PER_GOLD = 400;
-/** Snapshot of the largest undiscounted gold pack: 50 000 gold for 7800 ₽. */
-const GOLD_PACK_GOLD = 50_000;
-const GOLD_PACK_RUBLES = 7_800;
+export type ValuationRates = Pick<
+  PlayerSessionConfig,
+  "silverPerGold" | "goldPackGold" | "goldPackRubles" | "goldPerBond"
+>;
 
-export function rublesFromGold(gold: number): number {
-  return (gold * GOLD_PACK_RUBLES) / GOLD_PACK_GOLD;
+function rublesFromGold(gold: number, rates: ValuationRates): number {
+  return (gold * rates.goldPackRubles) / rates.goldPackGold;
 }
 
 export function uniqueTankIds(
@@ -17,40 +22,71 @@ export function uniqueTankIds(
   return [...new Set([...hangarTankIds, ...rented.map((tank) => tank.tankId)])];
 }
 
-function tankRubles(
-  priceSilver: number | null,
-  priceGold: number | null,
-): number {
-  const silver = priceSilver ?? 0;
-  const gold = priceGold ?? 0;
-  if (gold > 0) return rublesFromGold(gold);
-  if (silver > 0) return rublesFromGold(silver / SILVER_PER_GOLD);
-  return 0;
+function pushRow(
+  rows: ColumnRow[],
+  name: string,
+  count: number,
+  amount: number,
+) {
+  if (count > 0) rows.push({ name, count, amount });
 }
 
 export function valueAccount(
   account: AccountSnapshot,
   tankIds: number[],
   prices: VehiclePrice[],
+  rates: ValuationRates,
 ): {
-  tankCount: number;
-  tanksRub: number;
-  otherRub: number;
-  sumRub: number;
+  heroAmount: number;
+  rows: ColumnRow[];
 } {
   const priceById = new Map(prices.map((price) => [price.tankId, price]));
-  let tanksRub = 0;
+  let premiumCount = 0;
+  let premiumGold = 0;
+  let researchableCount = 0;
+  let researchableSilver = 0;
   for (const tankId of tankIds) {
     const price = priceById.get(tankId);
-    tanksRub += tankRubles(price?.priceSilver ?? null, price?.priceGold ?? null);
+    const gold = price?.priceGold ?? 0;
+    const silver = price?.priceSilver ?? 0;
+    if (gold > 0) {
+      premiumCount += 1;
+      premiumGold += gold;
+    } else if (silver > 0) {
+      researchableCount += 1;
+      researchableSilver += silver;
+    }
   }
-  const otherRub =
-    rublesFromGold(account.silver / SILVER_PER_GOLD) +
-    rublesFromGold(account.gold);
+
+  const rows: ColumnRow[] = [];
+  pushRow(
+    rows,
+    "Боны",
+    account.bonds,
+    rublesFromGold(account.bonds * rates.goldPerBond, rates),
+  );
+  pushRow(rows, "Золото", account.gold, rublesFromGold(account.gold, rates));
+  pushRow(
+    rows,
+    "Серебро",
+    account.silver,
+    rublesFromGold(account.silver / rates.silverPerGold, rates),
+  );
+  pushRow(
+    rows,
+    "Премиумные танки",
+    premiumCount,
+    rublesFromGold(premiumGold, rates),
+  );
+  pushRow(
+    rows,
+    "Прокачиваемые танки",
+    researchableCount,
+    rublesFromGold(researchableSilver / rates.silverPerGold, rates),
+  );
+
   return {
-    tankCount: tankIds.length,
-    tanksRub,
-    otherRub,
-    sumRub: tanksRub + otherRub,
+    heroAmount: rows.reduce((sum, row) => sum + row.amount, 0),
+    rows,
   };
 }

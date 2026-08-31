@@ -7,9 +7,18 @@ import { systemClock } from "./src/adapters/system-clock";
 import { createPlayerSession } from "./src/packages/player-session";
 import { AppChrome, PlayerScreen } from "./src/ui/PlayerScreen";
 
+const extra = Constants.expoConfig?.extra ?? {};
+
+function snapshotNumber(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error("rate snapshot");
+  }
+  return n;
+}
+
 const applicationId =
-  (Constants.expoConfig?.extra?.lestaApplicationId as string | undefined) ??
-  "";
+  (extra.lestaApplicationId as string | undefined) ?? "";
 
 export default function App() {
   const session = useMemo(
@@ -21,7 +30,15 @@ export default function App() {
           fetch: globalThis.fetch.bind(globalThis),
         }),
         clock: systemClock,
-        config: { applicationId },
+        config: {
+          applicationId,
+          silverPerGold: snapshotNumber(extra.silverPerGold),
+          goldPackGold: snapshotNumber(extra.goldPackGold),
+          goldPackRubles: snapshotNumber(extra.goldPackRubles),
+          goldPerBond: snapshotNumber(extra.goldPerBond),
+          rubPerByn: snapshotNumber(extra.rubPerByn),
+          rubPerUsd: snapshotNumber(extra.rubPerUsd),
+        },
       }),
     [],
   );
@@ -46,6 +63,7 @@ export default function App() {
         onSignIn={() => void session.signIn()}
         onSignOut={() => void session.signOut()}
         onRetry={() => void session.retry()}
+        onChooseDisplayCurrency={(label) => session.chooseDisplayCurrency(label)}
       />
     </AppChrome>
   );

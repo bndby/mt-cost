@@ -5,13 +5,15 @@ const KOPECK_SIZE = 0.7;
 const KOPECK_OPACITY = 0.55;
 
 export function RubAmount({
-  rubles,
+  amount,
+  symbol = "₽",
   style,
 }: {
-  rubles: number;
+  amount: number;
+  symbol?: string;
   style?: StyleProp<TextStyle>;
 }) {
-  const { integer, kopecks } = splitRubDisplay(rubles);
+  const { integer, kopecks } = splitRubDisplay(amount);
   const fontSize = StyleSheet.flatten(style)?.fontSize;
   return (
     <Text style={style}>
@@ -25,7 +27,7 @@ export function RubAmount({
       >
         ,{kopecks}
       </Text>
-      {" ₽"}
+      {` ${symbol}`}
     </Text>
   );
 }

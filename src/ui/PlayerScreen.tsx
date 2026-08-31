@@ -6,46 +6,48 @@ import {
   SafeAreaView,
   initialWindowMetrics,
 } from "react-native-safe-area-context";
-import type { Screen } from "../packages/player-session";
+import type {
+  ColumnRow,
+  DisplayChip,
+  Screen,
+  ValuationSnapshot,
+} from "../packages/player-session";
 import { RubAmount } from "./RubAmount";
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
 }
 
-function SlotValue({
-  slots,
-  kind,
+function selectedSymbol(snapshot: ValuationSnapshot): string {
+  if (snapshot.kind !== "numbers") return "₽";
+  return snapshot.chips.find((chip) => chip.selected)?.symbol ?? "₽";
+}
+
+function Switcher({
+  chips,
+  onChoose,
 }: {
-  slots: Extract<Screen, { kind: "valuation" }>["slots"];
-  kind: "sum" | "tanks" | "tanksRub" | "other";
+  chips: DisplayChip[];
+  onChoose: (label: string) => void;
 }) {
-  if (slots.kind === "waiting") {
-    return <WaitingPulse hero={kind === "sum"} />;
-  }
-  if (slots.kind === "dashes") {
-    return <Text style={kind === "sum" ? styles.sum : styles.dockValue}>—</Text>;
-  }
-  if (kind === "tanks") {
-    return (
-      <Text style={styles.dockValue}>{formatCount(slots.tankCount)}</Text>
-    );
-  }
-  const rubles =
-    kind === "sum"
-      ? slots.sumRub
-      : kind === "tanksRub"
-        ? slots.tanksRub
-        : slots.otherRub;
   return (
-    <RubAmount
-      rubles={rubles}
-      style={kind === "sum" ? styles.sum : styles.dockValue}
-    />
+    <View style={styles.switcher}>
+      {chips.map((chip) => (
+        <Pressable
+          key={chip.label}
+          onPress={() => onChoose(chip.label)}
+          style={[styles.chip, chip.selected && styles.chipOn]}
+        >
+          <Text style={[styles.chipLabel, chip.selected && styles.chipLabelOn]}>
+            {chip.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
-function WaitingPulse({ hero }: { hero: boolean }) {
+function WaitingPulse({ style }: { style: object }) {
   const opacity = useRef(new Animated.Value(0.35)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -65,10 +67,55 @@ function WaitingPulse({ hero }: { hero: boolean }) {
     loop.start();
     return () => loop.stop();
   }, [opacity]);
+  return <Animated.View style={[style, { opacity }]} />;
+}
+
+function HeroAmount({
+  snapshot,
+  symbol,
+}: {
+  snapshot: ValuationSnapshot;
+  symbol: string;
+}) {
+  if (snapshot.kind === "waiting") {
+    return <WaitingPulse style={styles.heroPulse} />;
+  }
+  if (snapshot.kind === "dashes") {
+    return <Text style={styles.sum}>—</Text>;
+  }
   return (
-    <Animated.View
-      style={[hero ? styles.heroPulse : styles.dockPulse, { opacity }]}
-    />
+    <RubAmount amount={snapshot.heroAmount} symbol={symbol} style={styles.sum} />
+  );
+}
+
+function ColumnLine({
+  row,
+  symbol,
+}: {
+  row: ColumnRow;
+  symbol: string;
+}) {
+  return (
+    <Text style={styles.rowName}>
+      {row.name} ({formatCount(row.count)}) ={" "}
+      <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
+    </Text>
+  );
+}
+
+function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: string }) {
+  if (snapshot.kind === "waiting") {
+    return <WaitingPulse style={styles.columnPulse} />;
+  }
+  if (snapshot.kind === "dashes" || snapshot.rows.length === 0) {
+    return null;
+  }
+  return (
+    <View style={styles.column}>
+      {snapshot.rows.map((row) => (
+        <ColumnLine key={row.name} row={row} symbol={symbol} />
+      ))}
+    </View>
   );
 }
 
@@ -77,11 +124,13 @@ export function PlayerScreen({
   onSignIn,
   onSignOut,
   onRetry,
+  onChooseDisplayCurrency,
 }: {
   screen: Screen;
   onSignIn: () => void;
   onSignOut: () => void;
   onRetry: () => void;
+  onChooseDisplayCurrency: (label: string) => void;
 }) {
   if (screen.kind === "signed-out") {
     return (
@@ -98,36 +147,33 @@ export function PlayerScreen({
     );
   }
 
+  const symbol = selectedSymbol(screen.snapshot);
+
   return (
     <View style={styles.body}>
       <View style={styles.top}>
+        <View style={styles.topLeft}>
+          {screen.retryLabel ? (
+            <Pressable onPress={onRetry} hitSlop={12}>
+              <Text style={styles.textButton}>{screen.retryLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <Pressable onPress={onSignOut} hitSlop={12}>
           <Text style={styles.textButton}>{screen.signOutLabel}</Text>
         </Pressable>
       </View>
       <View style={styles.hero}>
-        <Text style={styles.kicker}>{screen.heroLabel}</Text>
-        <SlotValue slots={screen.slots} kind="sum" />
-        {screen.retryLabel ? (
-          <Pressable onPress={onRetry} hitSlop={12} style={styles.retryWrap}>
-            <Text style={styles.textButton}>{screen.retryLabel}</Text>
-          </Pressable>
+        <Text style={styles.kicker}>{screen.kicker}</Text>
+        <HeroAmount snapshot={screen.snapshot} symbol={symbol} />
+        {screen.snapshot.kind === "numbers" ? (
+          <Switcher
+            chips={screen.snapshot.chips}
+            onChoose={onChooseDisplayCurrency}
+          />
         ) : null}
       </View>
-      <View style={styles.dock}>
-        <View style={styles.dockCol}>
-          <Text style={styles.dockLabel}>{screen.tanksLabel}</Text>
-          <SlotValue slots={screen.slots} kind="tanks" />
-        </View>
-        <View style={styles.dockCol}>
-          <Text style={styles.dockLabel}>{screen.tanksRubLabel}</Text>
-          <SlotValue slots={screen.slots} kind="tanksRub" />
-        </View>
-        <View style={styles.dockCol}>
-          <Text style={styles.dockLabel}>{screen.otherLabel}</Text>
-          <SlotValue slots={screen.slots} kind="other" />
-        </View>
-      </View>
+      <Column snapshot={screen.snapshot} symbol={symbol} />
     </View>
   );
 }
@@ -156,7 +202,12 @@ const styles = StyleSheet.create({
   },
   top: {
     minHeight: 36,
-    alignItems: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  topLeft: {
+    minHeight: 36,
     justifyContent: "center",
   },
   loginCopy: {
@@ -198,44 +249,57 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontSize: 13,
-    letterSpacing: 2.4,
-    textTransform: "uppercase",
+    letterSpacing: 0.4,
     color: "#8c887c",
     marginBottom: 10,
   },
   sum: {
     color: "#f3f1ea",
-    fontSize: 56,
+    fontSize: 40,
     fontWeight: "600",
-    letterSpacing: -1.5,
-    lineHeight: 60,
+    letterSpacing: -1.2,
+    lineHeight: 44,
     fontVariant: ["tabular-nums"],
   },
-  retryWrap: {
-    paddingTop: 12,
-    alignSelf: "flex-start",
-  },
-  dock: {
+  switcher: {
     flexDirection: "row",
-    gap: 8,
-    paddingTop: 28,
-    borderTopWidth: 1,
-    borderTopColor: "#2a2d36",
-    marginTop: 8,
+    gap: 6,
+    marginTop: 12,
   },
-  dockCol: {
+  chip: {
     flex: 1,
-    minWidth: 0,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+    backgroundColor: "#1a1d24",
   },
-  dockLabel: {
+  chipOn: {
+    backgroundColor: "#e7c46a",
+  },
+  chipLabel: {
+    color: "#9a968c",
     fontSize: 11,
-    color: "#8c887c",
-    marginBottom: 4,
-    lineHeight: 14,
+    fontWeight: "600",
   },
-  dockValue: {
+  chipLabelOn: {
+    color: "#1a1408",
+  },
+  column: {
+    backgroundColor: "#1a1d24",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  rowName: {
     color: "#f3f1ea",
     fontSize: 14,
+    lineHeight: 20,
+  },
+  rowPrice: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   heroPulse: {
@@ -244,11 +308,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#3a3e4a",
   },
-  dockPulse: {
-    height: 14,
-    width: 72,
-    borderRadius: 4,
+  columnPulse: {
+    height: 120,
+    borderRadius: 12,
     backgroundColor: "#3a3e4a",
-    marginTop: 4,
   },
 });
