@@ -106,8 +106,79 @@ def waiting() -> None:
     save(img, "03-waiting.png")
 
 
+# Lesta «Мир танков» shield, traced from the official mark (152×202 px).
+# Orange field #F0401E; heptagon with flat top, vertical sides, pointed bottom.
+SHIELD_ORANGE = (240, 64, 30)
+SHIELD_BG = (0, 0, 0)
+SHIELD_VERTS = (
+    (34.0, 0.0),
+    (117.0, 0.0),
+    (151.0, 29.0),
+    (151.0, 138.0),
+    (75.5, 201.0),
+    (0.0, 138.0),
+    (0.0, 29.0),
+)
+SHIELD_W, SHIELD_H = 151.0, 201.0
+# Star bbox on the reference: (30,41)–(121,126), center (75.5, 83.5).
+STAR_CX, STAR_CY = 75.5, 83.5
+STAR_H = 86.0
+RUBLE_FONT = "/usr/share/fonts/OTF/FiraSans-Heavy.otf"
+
+
+def _shield_layout(size: int) -> tuple[float, float, float]:
+    pad = size * 0.08
+    scale = (size - 2 * pad) / SHIELD_H
+    sw = SHIELD_W * scale
+    tx = (size - sw) / 2
+    return tx, pad, scale
+
+
+def play_icon_svg(size: int) -> str:
+    tx, ty, scale = _shield_layout(size)
+    pts = " ".join(f"{tx + x * scale:.3f},{ty + y * scale:.3f}" for x, y in SHIELD_VERTS)
+    cx = tx + STAR_CX * scale
+    cy = ty + STAR_CY * scale
+    font_size = STAR_H * scale * 1.55
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 {size} {size}">'
+        f'<rect width="{size}" height="{size}" fill="#000000"/>'
+        f'<polygon fill="#F0401E" points="{pts}"/>'
+        f'<text x="{cx:.3f}" y="{cy:.3f}" fill="#000000" font-family="Fira Sans" '
+        f'font-weight="900" font-size="{font_size:.3f}" text-anchor="middle" '
+        f'dominant-baseline="central">₽</text>'
+        f"</svg>"
+    )
+
+
+def render_play_icon(size: int) -> Image.Image:
+    ss = 4
+    canvas = size * ss
+    tx, ty, scale = _shield_layout(canvas)
+    img = Image.new("RGB", (canvas, canvas), SHIELD_BG)
+    d = ImageDraw.Draw(img)
+    d.polygon([(tx + x * scale, ty + y * scale) for x, y in SHIELD_VERTS], fill=SHIELD_ORANGE)
+    fnt = ImageFont.truetype(RUBLE_FONT, size=round(STAR_H * scale * 1.55))
+    glyph = "₽"
+    l, t, r, b = fnt.getbbox(glyph)
+    cx = tx + STAR_CX * scale
+    cy = ty + STAR_CY * scale
+    d.text((cx - (l + r) / 2, cy - (t + b) / 2), glyph, font=fnt, fill=SHIELD_BG)
+    return img.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def write_play_icon(path: Path, size: int) -> None:
+    render_play_icon(size).save(path, "PNG")
+    print(path)
+
+
 def feature_graphic() -> None:
-    icon = Image.open(ROOT / "assets" / "icon.png").convert("RGB").resize((360, 360))
+    icon = (
+        Image.open(OUT / "icon-source.png")
+        .convert("RGB")
+        .resize((360, 360), Image.Resampling.LANCZOS)
+    )
     img = Image.new("RGB", (1024, 500), BG)
     img.paste(icon, (80, 70))
     d = ImageDraw.Draw(img)
@@ -121,10 +192,10 @@ def feature_graphic() -> None:
 
 
 def hi_res_icon() -> None:
-    icon = Image.open(ROOT / "assets" / "icon.png").convert("RGB").resize((512, 512))
-    path = OUT / "icon-512.png"
-    icon.save(path, "PNG")
-    print(path)
+    svg = OUT / "icon.svg"
+    svg.write_text(play_icon_svg(512), encoding="utf-8")
+    write_play_icon(OUT / "icon-source.png", 1024)
+    write_play_icon(OUT / "icon-512.png", 512)
 
 
 if __name__ == "__main__":
