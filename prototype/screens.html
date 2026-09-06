@@ -184,18 +184,61 @@
       background: #111; color: #fff; font-size: 16px; cursor: pointer;
     }
     .switcher .label { min-width: 168px; text-align: center; }
+
+    /* ========== WG: second login button + realm step (issue #52) ========== */
+    .cta-secondary {
+      margin-top: 10px; width: 100%; background: transparent; border: 1px solid currentColor;
+      color: inherit; opacity: .82; padding: 14px; border-radius: 12px; font-size: 15px;
+      font-weight: 600; text-align: center;
+    }
+    .brief-note { font-size: 12px; color: var(--chrome-muted); margin: -4px 0 6px; }
+    .realm-panel { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+    .realm-kicker { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; opacity: .65; }
+    .realm-title { font-size: 22px; font-weight: 600; margin: 0; }
+    .realm-buttons { display: flex; gap: 8px; }
+    .realm-chip {
+      flex: 1; padding: 14px 0; border-radius: 12px; border: 1px solid currentColor;
+      background: transparent; color: inherit; font-size: 15px; font-weight: 650; text-align: center;
+    }
+    .realm-list { display: flex; flex-direction: column; gap: 8px; }
+    .realm-row {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      padding: 12px 14px; border-radius: 12px; border: 1px solid currentColor;
+      background: transparent; color: inherit; text-align: left; opacity: .78;
+    }
+    .realm-row.is-active { opacity: 1; border-width: 2px; }
+    .realm-row-label { font-size: 15px; font-weight: 600; }
+    .realm-row-sub { font-size: 12px; opacity: .7; }
+    .realm-switcher-inline { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 8px 0; }
+    .realm-switcher-inline .realm-arrow {
+      width: 40px; height: 40px; border-radius: 50%; border: 1px solid currentColor;
+      background: transparent; color: inherit; font-size: 16px;
+    }
+    .realm-switcher-label { text-align: center; min-width: 96px; }
+    .realm-switcher-key { font-size: 22px; font-weight: 700; }
+    .realm-switcher-sub { font-size: 12px; opacity: .65; }
+    .realm-confirm {
+      margin-top: 4px; width: 100%; padding: 14px; border-radius: 12px;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font-weight: 650; font-size: 15px;
+    }
   </style>
 </head>
 <body>
-<!-- Three variants of «не вошёл» and Оценка, switchable via ?variant=&scene=, throwaway HTML: no app route exists yet. -->
+<!-- Three variants of «не вошёл» and Оценка, switchable via ?variant=&scene=&realm=, throwaway HTML: no app route exists yet.
+     Extended for issue #52 (part of #41): second "Войти через WG" button in the signed-out scene, plus a
+     "WG · выбор реалма" scene for the realm step (NA/EU/ASIA), with three interaction styles via ?realm=buttons|list|switcher. -->
 <div class="page">
   <aside class="brief">
     <h1>Как выглядят экраны «не вошёл» и Оценки</h1>
     <p>
       Выкидной прототип: иерархия, подписи, «выйти» и «повторить».
       Стрелки — макет, кнопки — режим слотов.
+      Кнопка «Войти через WG» и шаг выбора реалма (NA/EU/ASIA) — для тикета #52.
     </p>
     <div class="scenes" id="scenes"></div>
+    <p class="brief-note">Стиль выбора реалма (WG), сцена «WG · выбор реалма»:</p>
+    <div class="scenes" id="realm-styles"></div>
   </aside>
   <div class="stage">
     <div class="phone" id="phone" aria-label="макет телефона"></div>
@@ -215,6 +258,7 @@
   ];
   const SCENES = [
     { key: "signed-out", name: "не вошёл" },
+    { key: "wg-realm", name: "WG · выбор реалма" },
     { key: "waiting", name: "Оценка · ждём" },
     { key: "success", name: "Оценка · числа" },
     { key: "empty", name: "Оценка · пустой Ангар" },
@@ -224,12 +268,31 @@
     success: { tanks: "23", tanksRub: "48 360 ₽", otherRub: "2 184 ₽", sumRub: "50 544 ₽" },
     empty: { tanks: "0", tanksRub: "0 ₽", otherRub: "312 ₽", sumRub: "312 ₽" },
   };
+  // WG realm step (issue #52): three interaction styles to grill against in #53.
+  const REALMS = [
+    { key: "NA", label: "Северная Америка", host: "api.worldoftanks.com" },
+    { key: "EU", label: "Европа", host: "api.worldoftanks.eu" },
+    { key: "ASIA", label: "Азия", host: "api.worldoftanks.asia" },
+  ];
+  const REALM_STYLES = [
+    { key: "buttons", name: "Три кнопки" },
+    { key: "list", name: "Список" },
+    { key: "switcher", name: "Свитчер" },
+  ];
+  let realmCursor = 0;
+  let chosenRealm = null;
+  let loginSource = null; // "lesta" | "wg" — for the state dump only
+  function resetWgFlow() {
+    chosenRealm = null;
+    realmCursor = 0;
+  }
 
   function params() {
     const q = new URLSearchParams(location.search);
     const variant = VARIANTS.some((v) => v.key === q.get("variant")) ? q.get("variant") : "A";
     const scene = SCENES.some((s) => s.key === q.get("scene")) ? q.get("scene") : "success";
-    return { variant, scene };
+    const realm = REALM_STYLES.some((r) => r.key === q.get("realm")) ? q.get("realm") : "buttons";
+    return { variant, scene, realm };
   }
   function setParams(next) {
     const cur = params();
@@ -248,20 +311,67 @@
     return `<div class="status" style="color:inherit"><span>16:00</span><span>LTE  84%</span></div>`;
   }
 
+  // One shared realm-step body, reused unchanged across A/B/C so the three
+  // *interaction* styles (buttons/list/switcher) — the actual question in #52 — stay
+  // decoupled from which overall screen variant hosts them.
+  function realmPickerBody() {
+    const style = params().realm;
+    if (style === "list") {
+      return `<div class="realm-list">${REALMS.map((r, i) => `
+        <button class="ui realm-row${i === realmCursor ? " is-active" : ""}" data-realm="${r.key}">
+          <span class="realm-row-label">${r.label}</span>
+          <span class="realm-row-sub">${r.key} · ${r.host}</span>
+        </button>
+      `).join("")}</div>`;
+    }
+    if (style === "switcher") {
+      const r = REALMS[realmCursor];
+      return `<div class="realm-switcher-inline">
+        <button class="ui realm-arrow" data-realm-cycle="-1" aria-label="Предыдущий реалм">←</button>
+        <div class="realm-switcher-label">
+          <div class="realm-switcher-key">${r.key}</div>
+          <div class="realm-switcher-sub">${r.label}</div>
+        </div>
+        <button class="ui realm-arrow" data-realm-cycle="1" aria-label="Следующий реалм">→</button>
+      </div>
+      <button class="ui realm-confirm" data-act="wg-confirm">Войти · ${r.key}</button>`;
+    }
+    return `<div class="realm-buttons">${REALMS.map((r) => `
+      <button class="ui realm-chip" data-realm="${r.key}">${r.key}</button>
+    `).join("")}</div>`;
+  }
+  function realmScreen(kicker) {
+    return `<div class="realm-panel">
+      <div class="realm-kicker">${kicker}</div>
+      <div class="realm-title">Выберите реалм</div>
+      ${realmPickerBody()}
+    </div>`;
+  }
+
   function viewA(scene) {
     const signedOut = scene === "signed-out";
+    const wgRealm = scene === "wg-realm";
     const fail = scene === "failure";
-    const logged = !signedOut;
+    const logged = !signedOut && !wgRealm;
     return `<div class="screen is-on a">
       ${statusBar()}
       <div class="a-body">
-        <div class="a-top">${logged ? `<button class="ui a-exit" data-act="logout">Выйти</button>` : ""}</div>
+        <div class="a-top">${
+          logged ? `<button class="ui a-exit" data-act="logout">Выйти</button>`
+          : wgRealm ? `<button class="ui a-exit" data-act="wg-back">Назад</button>`
+          : ""
+        }</div>
         ${signedOut ? `
           <div class="a-login-copy">
             <h2 class="a-title">Оценка</h2>
             <p class="a-sub">Имущество аккаунта Мира танков в рублях.</p>
           </div>
           <button class="ui a-cta" data-act="login">Войти через Lesta</button>
+          <button class="ui cta-secondary" data-act="wg-login">Войти через WG</button>
+        ` : wgRealm ? `
+          <div class="a-hero" style="justify-content:flex-start; padding-top:8px;">
+            ${realmScreen("Войти через WG")}
+          </div>
         ` : `
           <div class="a-hero">
             <div class="a-kicker">Оценка</div>
@@ -280,6 +390,7 @@
 
   function viewB(scene) {
     const signedOut = scene === "signed-out";
+    const wgRealm = scene === "wg-realm";
     const fail = scene === "failure";
     const tiles = [
       ["Танки", slot(scene, "tanks")],
@@ -291,14 +402,21 @@
       ${statusBar()}
       <div class="b-bar">
         <span>MT Cost</span>
-        ${signedOut ? "<span></span>" : `<button class="ui b-exit" data-act="logout">Выйти</button>`}
+        ${
+          signedOut ? "<span></span>"
+          : wgRealm ? `<button class="ui b-exit" data-act="wg-back">Назад</button>`
+          : `<button class="ui b-exit" data-act="logout">Выйти</button>`
+        }
       </div>
       <div class="b-body">
         ${signedOut ? `
           <div class="b-login">
             <p>Чтобы увидеть оценку, войдите через Lesta OpenID.</p>
             <button class="ui b-cta" data-act="login">Lesta OpenID</button>
+            <button class="ui cta-secondary" data-act="wg-login" style="margin-top:10px;">Войти через WG</button>
           </div>
+        ` : wgRealm ? `
+          <div class="b-login">${realmScreen("Войти через WG")}</div>
         ` : `
           <div class="b-grid">${tiles}</div>
           <div class="b-actions">${fail ? `<button class="ui b-retry" data-act="retry">Повторить</button>` : ""}</div>
@@ -309,6 +427,7 @@
 
   function viewC(scene) {
     const signedOut = scene === "signed-out";
+    const wgRealm = scene === "wg-realm";
     const fail = scene === "failure";
     const rows = [
       ["Танки, шт", slot(scene, "tanks")],
@@ -323,6 +442,10 @@
           <h2 class="c-login-title">Нужен вход</h2>
           <p class="c-login-copy">Lesta OpenID. Пароль вводится на стороне Lesta, не здесь.</p>
           <button class="ui c-cta" data-act="login">Войти</button>
+          <button class="ui c-cta" data-act="wg-login" style="margin-top:14px;">Войти через WG</button>
+        ` : wgRealm ? `
+          ${realmScreen("Войти через WG")}
+          <div class="c-foot"><button class="ui c-exit" data-act="wg-back">Назад</button><span></span></div>
         ` : `
           ${rows}
           <div class="c-total"><span>Оценка</span><span class="val">${slot(scene, "sumRub")}</span></div>
@@ -337,10 +460,11 @@
 
   const views = { A: viewA, B: viewB, C: viewC };
 
-  function dump({ variant, scene }) {
+  function dump({ variant, scene, realm }) {
     const v = VARIANTS.find((x) => x.key === variant);
-    const logged = scene !== "signed-out";
+    const logged = scene !== "signed-out" && scene !== "wg-realm";
     const slots = !logged ? "нет" : scene === "waiting" ? "анимация" : scene === "failure" ? "прочерки" : "числа";
+    const realmStyleName = REALM_STYLES.find((r) => r.key === realm).name;
     const lines = [
       `variant: ${variant} (${v.name})`,
       `scene:   ${scene}`,
@@ -349,31 +473,65 @@
       `выйти:   ${logged ? "есть" : "нет"}`,
       `повторить: ${scene === "failure" ? "есть" : "нет"}`,
       `custom tab: только по нажатию входа`,
+      `источник входа: ${loginSource ?? "—"}`,
+      `реалм (WG): ${chosenRealm ?? "—"}`,
+      `стиль выбора реалма: ${realm} (${realmStyleName})`,
     ];
     return lines.join("\n");
   }
 
   function render() {
-    const { variant, scene } = params();
+    const { variant, scene, realm } = params();
     const v = VARIANTS.find((x) => x.key === variant);
     document.getElementById("phone").innerHTML = views[variant](scene);
     document.getElementById("switcher-label").textContent = `${variant} (${v.name})`;
-    document.getElementById("state").textContent = dump({ variant, scene });
+    document.getElementById("state").textContent = dump({ variant, scene, realm });
     const scenes = document.getElementById("scenes");
     scenes.innerHTML = SCENES.map((s) =>
       `<button type="button" data-scene="${s.key}"${s.key === scene ? ' aria-current="true"' : ""}>${s.name}</button>`
+    ).join("");
+    const realmStyles = document.getElementById("realm-styles");
+    realmStyles.innerHTML = REALM_STYLES.map((r) =>
+      `<button type="button" data-realm-style="${r.key}"${r.key === realm ? ' aria-current="true"' : ""}>${r.name}</button>`
     ).join("");
   }
 
   document.getElementById("scenes").addEventListener("click", (e) => {
     const b = e.target.closest("[data-scene]");
-    if (b) setParams({ scene: b.dataset.scene });
+    if (!b) return;
+    if (b.dataset.scene === "signed-out") { resetWgFlow(); loginSource = null; }
+    setParams({ scene: b.dataset.scene });
+  });
+  document.getElementById("realm-styles").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-realm-style]");
+    if (b) setParams({ realm: b.dataset.realmStyle });
   });
   document.getElementById("phone").addEventListener("click", (e) => {
+    const cycle = e.target.closest("[data-realm-cycle]");
+    if (cycle) {
+      realmCursor = (realmCursor + Number(cycle.dataset.realmCycle) + REALMS.length) % REALMS.length;
+      render();
+      return;
+    }
+    const pick = e.target.closest("[data-realm]");
+    if (pick) {
+      chosenRealm = pick.dataset.realm;
+      loginSource = "wg";
+      setParams({ scene: "waiting" });
+      return;
+    }
     const b = e.target.closest("[data-act]");
     if (!b) return;
-    if (b.dataset.act === "login" || b.dataset.act === "retry") setParams({ scene: "waiting" });
-    if (b.dataset.act === "logout") setParams({ scene: "signed-out" });
+    if (b.dataset.act === "login") { loginSource = "lesta"; setParams({ scene: "waiting" }); }
+    if (b.dataset.act === "retry") setParams({ scene: "waiting" });
+    if (b.dataset.act === "logout") { loginSource = null; resetWgFlow(); setParams({ scene: "signed-out" }); }
+    if (b.dataset.act === "wg-login") { resetWgFlow(); setParams({ scene: "wg-realm" }); }
+    if (b.dataset.act === "wg-back") { resetWgFlow(); setParams({ scene: "signed-out" }); }
+    if (b.dataset.act === "wg-confirm") {
+      chosenRealm = REALMS[realmCursor].key;
+      loginSource = "wg";
+      setParams({ scene: "waiting" });
+    }
   });
   function cycle(dir) {
     const { variant } = params();
