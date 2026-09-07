@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createHttpLesta } from "./lesta-http";
+import { LESTA_API_ORIGIN } from "../packages/player-session";
 
 function jsonResponse(body: unknown, ok = true): Response {
   return {
@@ -70,5 +71,25 @@ describe("HTTP Lesta: боны и клан-тег", () => {
       jsonResponse({ status: "error", data: {} }),
     );
     await expect(client.fetchClanTag(42)).rejects.toThrow("clan");
+  });
+
+  test("запросы идут на переданный origin, иначе на Lesta", async () => {
+    const lesta = createClient(() => jsonResponse({ status: "ok", data: { "1": null } }));
+    await lesta.client.fetchClanTag(1);
+    expect(lesta.opened[0].origin).toBe(new URL(LESTA_API_ORIGIN).origin);
+
+    const opened: URL[] = [];
+    const wg = createHttpLesta({
+      origin: "https://api.worldoftanks.eu",
+      applicationId: "wg-id",
+      fetch: async (input) => {
+        const url = new URL(String(input));
+        opened.push(url);
+        return jsonResponse({ status: "ok", data: { "1": null } });
+      },
+    });
+    await wg.fetchClanTag(1);
+    expect(opened[0].origin).toBe("https://api.worldoftanks.eu");
+    expect(opened[0].searchParams.get("application_id")).toBe("wg-id");
   });
 });

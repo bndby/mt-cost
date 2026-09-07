@@ -4,6 +4,13 @@ export const OPEN_ID_REDIRECT_URI =
   "https://bndby.github.io/mt-cost/auth/callback";
 export const CUSTOM_SCHEME_CALLBACK = "mtcost://auth/callback";
 export const LESTA_API_ORIGIN = "https://api.tanki.su";
+export const WG_API_ORIGINS = {
+  NA: "https://api.worldoftanks.com",
+  EU: "https://api.worldoftanks.eu",
+  ASIA: "https://api.worldoftanks.asia",
+} as const;
+export type Realm = keyof typeof WG_API_ORIGINS;
+const REALM_KEYS = Object.keys(WG_API_ORIGINS) as Realm[];
 
 export type DisplayChip = {
   label: string;
@@ -31,8 +38,16 @@ export type Screen =
   | {
       kind: "signed-out";
       title: "Оценка";
-      subtitle: "Имущество аккаунта Мира танков.";
+      subtitle: "Имущество танкового аккаунта.";
       signInLabel: "Войти через Lesta";
+      wgSignInLabel: "Войти через WG";
+    }
+  | {
+      kind: "choose-realm";
+      kicker: "Войти через WG";
+      title: "Выберите Реалм";
+      backLabel: "Назад";
+      realms: { key: Realm; selected: boolean }[];
     }
   | {
       kind: "valuation";
@@ -89,10 +104,15 @@ export type LestaClient = {
 
 export type PlayerSessionConfig = {
   applicationId: string;
+  wgApplicationId: string;
   silverPerGold: number;
   goldPackGold: number;
   goldPackRubles: number;
   goldPerBond: number;
+  wgSilverPerGold: number;
+  wgGoldPackGold: number;
+  wgGoldPackUsd: number;
+  wgGoldPerBond: number;
   rubPerByn: number;
   rubPerUsd: number;
 };
@@ -101,6 +121,9 @@ export type PlayerSession = {
   screen(): Screen;
   subscribe(listener: () => void): () => void;
   signIn(): Promise<void>;
+  startWgSignIn(): void;
+  chooseRealm(key: Realm): Promise<void>;
+  backFromRealm(): void;
   signOut(): Promise<void>;
   retry(): Promise<void>;
   onForeground(): Promise<void>;
@@ -110,18 +133,37 @@ export type PlayerSession = {
 const SIGNED_OUT: Screen = {
   kind: "signed-out",
   title: "Оценка",
-  subtitle: "Имущество аккаунта Мира танков.",
+  subtitle: "Имущество танкового аккаунта.",
   signInLabel: "Войти через Lesta",
+  wgSignInLabel: "Войти через WG",
 };
 
-type LiveAuth = {
+function chooseRealmScreen(selected: Realm | null): Screen {
+  return {
+    kind: "choose-realm",
+    kicker: "Войти через WG",
+    title: "Выберите Реалм",
+    backLabel: "Назад",
+    realms: REALM_KEYS.map((key) => ({
+      key,
+      selected: key === selected,
+    })),
+  };
+}
+
+type CallbackAuth = {
   accessToken: string;
   expiresAt: number;
   accountId: number;
   nick: string;
 };
 
-function parseCallback(url: string): LiveAuth | "rejected" {
+type LiveAuth = CallbackAuth & {
+  source: "lesta" | "wg";
+  realm: Realm | null;
+};
+
+function parseCallback(url: string): CallbackAuth | "rejected" {
   const parsed = new URL(url);
   const status = parsed.searchParams.get("status");
   const message = parsed.searchParams.get("message") ?? "";
@@ -144,13 +186,27 @@ function parseCallback(url: string): LiveAuth | "rejected" {
   };
 }
 
-function formatKicker(nick: string, clanTag: string | null): string {
-  return clanTag ? `[${clanTag}] ${nick}` : nick;
+function openIdLoginUrl(origin: string, applicationId: string): string {
+  const login = new URL(`${origin}/wot/auth/login/`);
+  login.searchParams.set("application_id", applicationId);
+  login.searchParams.set("redirect_uri", OPEN_ID_REDIRECT_URI);
+  login.searchParams.set("display", "page");
+  return login.toString();
+}
+
+function formatKicker(
+  nick: string,
+  clanTag: string | null,
+  realm: Realm | null,
+): string {
+  const who = clanTag ? `[${clanTag}] ${nick}` : nick;
+  return realm ? `[${realm}] ${who}` : who;
 }
 
 export function createPlayerSession(deps: {
   customTab: CustomTab;
   lesta: LestaClient;
+  wgForRealm: (realm: Realm) => LestaClient;
   clock: Clock;
   config: PlayerSessionConfig;
 }): PlayerSession {
@@ -158,20 +214,48 @@ export function createPlayerSession(deps: {
   let screen: Screen = SIGNED_OUT;
   let auth: LiveAuth | null = null;
   let clanTag: string | null = null;
+  let selectedRealm: Realm | null = null;
+  let client: LestaClient = deps.lesta;
   let collectGeneration = 0;
   const RUB_LABEL = "рос. рубль";
+  const USD_LABEL = "доллар";
   let displayLabel = RUB_LABEL;
-  let collectedRubles: {
-    heroRubles: number;
+  let collected: {
+    heroAmount: number;
     rows: ColumnRow[];
   } | null = null;
 
   function displayMoneys() {
-    return [
-      { label: RUB_LABEL, symbol: "₽", rubPerUnit: 1 },
-      { label: "бел. рубль", symbol: "Br", rubPerUnit: deps.config.rubPerByn },
-      { label: "доллар", symbol: "$", rubPerUnit: deps.config.rubPerUsd },
-    ];
+    const rub = { label: RUB_LABEL, symbol: "₽", rubPerUnit: 1 };
+    const byn = {
+      label: "бел. рубль",
+      symbol: "Br",
+      rubPerUnit: deps.config.rubPerByn,
+    };
+    const usd = {
+      label: USD_LABEL,
+      symbol: "$",
+      rubPerUnit: deps.config.rubPerUsd,
+    };
+    if (auth?.source === "wg") return [usd, rub, byn];
+    return [rub, byn, usd];
+  }
+
+  function valuationRates() {
+    if (auth?.source === "wg") {
+      return {
+        silverPerGold: deps.config.wgSilverPerGold,
+        goldPackGold: deps.config.wgGoldPackGold,
+        goldPackRubles: deps.config.wgGoldPackUsd,
+        goldPerBond: deps.config.wgGoldPerBond,
+      };
+    }
+    return {
+      silverPerGold: deps.config.silverPerGold,
+      goldPackGold: deps.config.goldPackGold,
+      goldPackRubles: deps.config.goldPackRubles,
+      goldPerBond: deps.config.goldPerBond,
+    };
   }
 
   function selectedMoney() {
@@ -182,14 +266,20 @@ export function createPlayerSession(deps: {
   }
 
   function numbersSnapshot(
-    heroRubles: number,
+    heroAmount: number,
     rows: ColumnRow[],
   ): Extract<ValuationSnapshot, { kind: "numbers" }> {
     const selected = selectedMoney();
-    const convert = (rubles: number) => rubles / selected.rubPerUnit;
+    const convert = (amount: number) => {
+      if (auth?.source === "wg") {
+        if (selected.label === USD_LABEL) return amount;
+        return (amount * deps.config.rubPerUsd) / selected.rubPerUnit;
+      }
+      return amount / selected.rubPerUnit;
+    };
     return {
       kind: "numbers",
-      heroAmount: convert(heroRubles),
+      heroAmount: convert(heroAmount),
       rows: rows.map((row) => ({
         name: row.name,
         count: row.count,
@@ -216,19 +306,33 @@ export function createPlayerSession(deps: {
     collectGeneration += 1;
     auth = null;
     clanTag = null;
-    collectedRubles = null;
+    selectedRealm = null;
+    collected = null;
     displayLabel = RUB_LABEL;
+    client = deps.lesta;
     show(SIGNED_OUT);
   }
 
   function kicker(): string {
-    return auth ? formatKicker(auth.nick, clanTag) : "";
+    return auth ? formatKicker(auth.nick, clanTag, auth.realm) : "";
+  }
+
+  function beginLive(
+    parsed: CallbackAuth,
+    source: "lesta" | "wg",
+    realm: Realm | null,
+  ) {
+    auth = { ...parsed, source, realm };
+    displayLabel = source === "wg" ? USD_LABEL : RUB_LABEL;
+    client = source === "wg" && realm ? deps.wgForRealm(realm) : deps.lesta;
+    void collect();
+    void loadClanTag();
   }
 
   async function refreshAuth(): Promise<boolean> {
     if (!auth) return false;
     if (deps.clock.nowUnixSeconds < auth.expiresAt) return true;
-    const prolonged = await deps.lesta.prolongate(auth.accessToken);
+    const prolonged = await client.prolongate(auth.accessToken);
     if (prolonged === "failed") {
       forgetAuth();
       return false;
@@ -258,7 +362,7 @@ export function createPlayerSession(deps: {
     const current = auth;
     if (!current) return;
     try {
-      const tag = await deps.lesta.fetchClanTag(current.accountId);
+      const tag = await client.fetchClanTag(current.accountId);
       if (!auth || auth.accountId !== current.accountId) return;
       clanTag = tag;
       if (screen.kind === "valuation") {
@@ -276,7 +380,7 @@ export function createPlayerSession(deps: {
     const generation = ++collectGeneration;
     show(withValuation({ kind: "waiting" }, null));
     try {
-      const account = await deps.lesta.fetchAccount(
+      const account = await client.fetchAccount(
         current.accessToken,
         current.accountId,
       );
@@ -285,11 +389,11 @@ export function createPlayerSession(deps: {
       const prices =
         tankIds.length === 0
           ? []
-          : await deps.lesta.fetchVehiclePrices(tankIds);
+          : await client.fetchVehiclePrices(tankIds);
       if (generation !== collectGeneration || !auth) return;
-      const valued = valueAccount(account, tankIds, prices, deps.config);
-      collectedRubles = {
-        heroRubles: valued.heroAmount,
+      const valued = valueAccount(account, tankIds, prices, valuationRates());
+      collected = {
+        heroAmount: valued.heroAmount,
         rows: valued.rows,
       };
       show(
@@ -313,23 +417,43 @@ export function createPlayerSession(deps: {
       };
     },
     async signIn() {
-      if (auth) return;
-      const login = new URL(`${LESTA_API_ORIGIN}/wot/auth/login/`);
-      login.searchParams.set("application_id", deps.config.applicationId);
-      login.searchParams.set("redirect_uri", OPEN_ID_REDIRECT_URI);
-      login.searchParams.set("display", "page");
-      const result = await deps.customTab.open(login.toString());
+      if (auth || screen.kind !== "signed-out") return;
+      const result = await deps.customTab.open(
+        openIdLoginUrl(LESTA_API_ORIGIN, deps.config.applicationId),
+      );
       if (result.type !== "success") return;
       const parsed = parseCallback(result.url);
       if (parsed === "rejected") return;
-      auth = parsed;
-      void collect();
-      void loadClanTag();
+      beginLive(parsed, "lesta", null);
+    },
+    startWgSignIn() {
+      if (auth || screen.kind !== "signed-out") return;
+      selectedRealm = null;
+      show(chooseRealmScreen(null));
+    },
+    async chooseRealm(key) {
+      if (screen.kind !== "choose-realm") return;
+      if (!REALM_KEYS.includes(key)) return;
+      selectedRealm = key;
+      show(chooseRealmScreen(key));
+      const result = await deps.customTab.open(
+        openIdLoginUrl(WG_API_ORIGINS[key], deps.config.wgApplicationId),
+      );
+      if (result.type !== "success") return;
+      const parsed = parseCallback(result.url);
+      if (parsed === "rejected") return;
+      beginLive(parsed, "wg", key);
+    },
+    backFromRealm() {
+      if (screen.kind !== "choose-realm") return;
+      selectedRealm = null;
+      show(SIGNED_OUT);
     },
     async signOut() {
       const token = auth?.accessToken;
+      const toLogout = client;
       forgetAuth();
-      if (token) await deps.lesta.logout(token);
+      if (token) await toLogout.logout(token);
     },
     async retry() {
       if (!auth) return;
@@ -345,11 +469,11 @@ export function createPlayerSession(deps: {
       if (
         screen.kind === "valuation" &&
         screen.snapshot.kind === "numbers" &&
-        collectedRubles
+        collected
       ) {
         show(
           withValuation(
-            numbersSnapshot(collectedRubles.heroRubles, collectedRubles.rows),
+            numbersSnapshot(collected.heroAmount, collected.rows),
             screen.retryLabel,
           ),
         );
