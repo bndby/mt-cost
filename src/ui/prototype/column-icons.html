@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Прототип: иконки строк столбика</title>
+    <!-- Three icon languages for the five Оценка column rows, switchable via ?variant=, on the production column. Not HUD, not lookalike. Throwaway. -->
+    <style>
+      :root {
+        --bg: #12141a;
+        --text: #f3f1ea;
+        --muted: #8c887c;
+        --button: #c9c4b6;
+        --price: #ffffff;
+        --band: #1a1d24;
+        --icon: #d4d0c4;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: #0b0c10;
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 16px 40px;
+        gap: 16px;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+        max-width: 380px;
+        text-align: center;
+        line-height: 1.4;
+      }
+      .hint a { color: #e7c46a; }
+      .phone {
+        width: 360px;
+        height: 780px;
+        background: var(--bg);
+        border-radius: 28px;
+        border: 1px solid #2a2d36;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 12px 22px 12px;
+        box-shadow: 0 24px 60px #0008;
+      }
+      .top {
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-shrink: 0;
+      }
+      .top span { color: var(--button); font-size: 14px; }
+      .hero {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 0;
+      }
+      .kicker {
+        font-size: 13px;
+        letter-spacing: 0.4px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .sum {
+        color: var(--text);
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: -1.2px;
+        line-height: 44px;
+        font-variant-numeric: tabular-nums;
+      }
+      .kopecks { font-size: 0.7em; opacity: 0.55; }
+      .chips {
+        display: flex;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .chips span {
+        flex: 1;
+        border-radius: 10px;
+        padding: 8px 4px;
+        background: #1a1d24;
+        color: #9a968c;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .chips span.on {
+        background: #e7c46a;
+        color: #1a1408;
+      }
+      .column {
+        background: var(--band);
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 20px;
+      }
+      .row .copy { flex: 1; min-width: 0; }
+      .price {
+        color: var(--price);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .glyph {
+        flex-shrink: 0;
+        color: var(--icon);
+        display: grid;
+        place-items: center;
+      }
+      .glyph svg { display: block; }
+      /* A — inline stroke, no well */
+      [data-variant="A"] .glyph { width: 20px; height: 20px; }
+      /* B — circular well, pictogram inside */
+      [data-variant="B"] .glyph {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #12141a;
+      }
+      /* C — letter tile */
+      [data-variant="C"] .glyph {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        border: 1px solid #3a3e4a;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0;
+        color: var(--icon);
+      }
+      .switcher-space { height: 108px; flex-shrink: 0; }
+      .switcher {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .dump {
+        align-self: stretch;
+        background: #000000aa;
+        border-radius: 8px;
+        padding: 6px 10px;
+        color: #9a968c;
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        word-break: break-word;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        background: #f3f1ea;
+        border-radius: 999px;
+        padding: 6px;
+        gap: 4px;
+        box-shadow: 0 4px 16px #0008;
+      }
+      .bar button {
+        width: 40px;
+        height: 36px;
+        border: 0;
+        background: transparent;
+        color: #12141a;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .bar .label {
+        color: #12141a;
+        font-size: 13px;
+        font-weight: 700;
+        min-width: 148px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="hint">
+      Пять нейтральных знаков слева от лейблов в столбике Оценки.
+      Не HUD, не lookalike, один набор. Стрелки или ← →.
+      <a href="?variant=A">A</a> · <a href="?variant=B">B</a> · <a href="?variant=C">C</a>
+    </p>
+    <div class="phone">
+      <div class="top"><span>прототип</span></div>
+      <div class="hero">
+        <div class="kicker">[RED] Red_Baron</div>
+        <div class="sum">19<span class="kopecks">,341</span> ₽</div>
+        <div class="chips">
+          <span class="on">рос. рубль</span>
+          <span>бел. рубль</span>
+          <span>доллар</span>
+        </div>
+      </div>
+      <div class="column" id="column" data-variant="A"></div>
+      <div class="switcher-space"></div>
+      <div class="switcher">
+        <div class="dump" id="dump"></div>
+        <div class="bar">
+          <button type="button" id="prev" aria-label="Предыдущий">←</button>
+          <div class="label" id="label"></div>
+          <button type="button" id="next" aria-label="Следующий">→</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      const VARIANTS = [
+        { key: "A", name: "Геометрия", size: 20, well: "none" },
+        { key: "B", name: "Пиктограммы", size: 28, well: "circle" },
+        { key: "C", name: "Монограммы", size: 24, well: "tile" },
+      ];
+      const ROWS = [
+        { id: "bonds", name: "Боны", count: "12 400", amount: "1 934,40 ₽", mono: "Б" },
+        { id: "gold", name: "Золото", count: "8 150", amount: "1 271,40 ₽", mono: "З" },
+        { id: "silver", name: "Серебро", count: "12 450 000", amount: "4 855,50 ₽", mono: "С" },
+        { id: "premium", name: "Премиумные танки", count: "4", amount: "7 300,80 ₽", mono: "П" },
+        { id: "researchable", name: "Прокачиваемые танки", count: "10", amount: "3 979,54 ₽", mono: "Р" },
+      ];
+
+      function svg(inner) {
+        return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+      }
+
+      const GEOMETRY = {
+        bonds: svg('<circle cx="7" cy="7" r="2.1" fill="currentColor" stroke="none"/><circle cx="17" cy="7" r="2.1" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="2.1" fill="currentColor" stroke="none"/><circle cx="17" cy="17" r="2.1" fill="currentColor" stroke="none"/>'),
+        gold: svg('<path d="M12 3l9 9-9 9-9-9z"/>'),
+        silver: svg('<circle cx="12" cy="12" r="8"/>'),
+        premium: svg('<path d="M12 4l8 16H4z"/>'),
+        researchable: svg('<path d="M6 16l6-8 6 8"/>'),
+      };
+      const PICTO = {
+        bonds: svg('<rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M4 10h3.5a2 2 0 000 4H4"/>'),
+        gold: svg('<path d="M6 10h12l-2 8H8z"/><path d="M8 10V8h8v2"/>'),
+        silver: svg('<ellipse cx="12" cy="8" rx="6" ry="2.5"/><path d="M6 8v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/>'),
+        premium: svg('<path d="M12 3l2.4 6.6H21l-5.4 4.1 2 6.8L12 16.8 6.4 20.5l2-6.8L3 9.6h6.6z"/>'),
+        researchable: svg('<circle cx="12" cy="6" r="2.2"/><path d="M12 8.2V12M12 12L7 19M12 12l5 7"/>'),
+      };
+
+      function glyph(variant, row) {
+        if (variant === "A") return `<div class="glyph">${GEOMETRY[row.id]}</div>`;
+        if (variant === "B") return `<div class="glyph">${PICTO[row.id]}</div>`;
+        return `<div class="glyph">${row.mono}</div>`;
+      }
+
+      function currentKey() {
+        const v = new URLSearchParams(location.search).get("variant") || "A";
+        return VARIANTS.some((item) => item.key === v) ? v : "A";
+      }
+      function setVariant(key) {
+        const url = new URL(location.href);
+        url.searchParams.set("variant", key);
+        history.replaceState(null, "", url);
+        render();
+      }
+      function cycle(step) {
+        const keys = VARIANTS.map((item) => item.key);
+        const i = keys.indexOf(currentKey());
+        setVariant(keys[(i + step + keys.length) % keys.length]);
+      }
+      function render() {
+        const key = currentKey();
+        const meta = VARIANTS.find((item) => item.key === key);
+        const column = document.getElementById("column");
+        column.dataset.variant = key;
+        column.innerHTML = ROWS.map(
+          (row) => `<div class="row">
+            ${glyph(key, row)}
+            <div class="copy">${row.name} (${row.count}) = <span class="price">${row.amount}</span></div>
+          </div>`,
+        ).join("");
+        document.getElementById("label").textContent = `${meta.key} (${meta.name})`;
+        document.getElementById("dump").textContent =
+          "PROTOTYPE " +
+          JSON.stringify({
+            variant: key,
+            language: meta.name,
+            sizePx: meta.size,
+            well: meta.well,
+            rows: ROWS.map((row) => row.name),
+          });
+      }
+
+      document.getElementById("prev").onclick = () => cycle(-1);
+      document.getElementById("next").onclick = () => cycle(1);
+      document.addEventListener("keydown", (event) => {
+        const tag = event.target && event.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) return;
+        if (event.key === "ArrowLeft") cycle(-1);
+        if (event.key === "ArrowRight") cycle(1);
+      });
+      render();
+    </script>
+  </body>
+</html>
