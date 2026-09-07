@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Прототип: иконки строк столбика</title>
-    <!-- Three icon languages for the five Оценка column rows, switchable via ?variant=, on the production column. Not HUD, not lookalike. Throwaway. -->
+    <!-- Four icon languages for the five Оценка column rows, switchable via ?variant=, on the production column. Throwaway. D is coins + tank contours as described; it collides with the no-lookalike decision. -->
     <style>
       :root {
         --bg: #12141a;
@@ -150,6 +150,8 @@
         letter-spacing: 0;
         color: var(--icon);
       }
+      /* D — MaterialCommunityIcons: cash-multiple, circle-multiple, tank */
+      [data-variant="D"] .glyph { width: 22px; height: 22px; }
       .switcher-space { height: 108px; flex-shrink: 0; }
       .switcher {
         position: absolute;
@@ -201,9 +203,9 @@
   </head>
   <body>
     <p class="hint">
-      Пять нейтральных знаков слева от лейблов в столбике Оценки.
-      Не HUD, не lookalike, один набор. Стрелки или ← →.
-      <a href="?variant=A">A</a> · <a href="?variant=B">B</a> · <a href="?variant=C">C</a>
+      Пять знаков слева от лейблов в столбике Оценки. Один набор.
+      D — MDI: cash-multiple, circle-multiple, tank. Стрелки или ← →.
+      <a href="?variant=A">A</a> · <a href="?variant=B">B</a> · <a href="?variant=C">C</a> · <a href="?variant=D">D</a>
     </p>
     <div class="phone">
       <div class="top"><span>прототип</span></div>
@@ -216,7 +218,7 @@
           <span>доллар</span>
         </div>
       </div>
-      <div class="column" id="column" data-variant="A"></div>
+      <div class="column" id="column" data-variant="D"></div>
       <div class="switcher-space"></div>
       <div class="switcher">
         <div class="dump" id="dump"></div>
@@ -232,6 +234,7 @@
         { key: "A", name: "Геометрия", size: 20, well: "none" },
         { key: "B", name: "Пиктограммы", size: 28, well: "circle" },
         { key: "C", name: "Монограммы", size: 24, well: "tile" },
+        { key: "D", name: "MDI", size: 22, well: "none" },
       ];
       const ROWS = [
         { id: "bonds", name: "Боны", count: "12 400", amount: "1 934,40 ₽", mono: "Б" },
@@ -260,15 +263,33 @@
         researchable: svg('<circle cx="12" cy="6" r="2.2"/><path d="M12 8.2V12M12 12L7 19M12 12l5 7"/>'),
       };
 
+      function mdi(path, fill) {
+        return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="${fill}" d="${path}"/></svg>`;
+      }
+      const MDI_CASH_MULTIPLE =
+        "M5,6H23V18H5V6M14,9A3,3 0 0,1 17,12A3,3 0 0,1 14,15A3,3 0 0,1 11,12A3,3 0 0,1 14,9M9,8A2,2 0 0,1 7,10V14A2,2 0 0,1 9,16H19A2,2 0 0,1 21,14V10A2,2 0 0,1 19,8H9M1,10H3V20H19V22H1V10Z";
+      const MDI_CIRCLE_MULTIPLE =
+        "M15 4A8 8 0 1 1 7 12A8 8 0 0 1 15 4M3 12A6 6 0 0 0 7 17.65V19.74A8 8 0 0 1 7 4.26V6.35A6 6 0 0 0 3 12Z";
+      const MDI_TANK =
+        "M20,12H4V11H6L7,6H12L13,11H20V12M13.22,7L13.62,9H22V7H13.22M22,16A3,3 0 0,1 19,19H5A3,3 0 0,1 2,16A3,3 0 0,1 5,13H19A3,3 0 0,1 22,16M6,16A1,1 0 0,0 5,15A1,1 0 0,0 4,16A1,1 0 0,0 5,17A1,1 0 0,0 6,16M13,16A1,1 0 0,0 12,15A1,1 0 0,0 11,16A1,1 0 0,0 12,17A1,1 0 0,0 13,16M20,16A1,1 0 0,0 19,15A1,1 0 0,0 18,16A1,1 0 0,0 19,17A1,1 0 0,0 20,16Z";
+      const METAL = {
+        bonds: mdi(MDI_CASH_MULTIPLE, "#c17a3a"),
+        gold: mdi(MDI_CIRCLE_MULTIPLE, "#e6c15a"),
+        silver: mdi(MDI_CIRCLE_MULTIPLE, "#c8d0d8"),
+        premium: mdi(MDI_TANK, "#e6c15a"),
+        researchable: mdi(MDI_TANK, "#c8d0d8"),
+      };
+
       function glyph(variant, row) {
         if (variant === "A") return `<div class="glyph">${GEOMETRY[row.id]}</div>`;
         if (variant === "B") return `<div class="glyph">${PICTO[row.id]}</div>`;
-        return `<div class="glyph">${row.mono}</div>`;
+        if (variant === "C") return `<div class="glyph">${row.mono}</div>`;
+        return `<div class="glyph">${METAL[row.id]}</div>`;
       }
 
       function currentKey() {
-        const v = new URLSearchParams(location.search).get("variant") || "A";
-        return VARIANTS.some((item) => item.key === v) ? v : "A";
+        const v = new URLSearchParams(location.search).get("variant") || "D";
+        return VARIANTS.some((item) => item.key === v) ? v : "D";
       }
       function setVariant(key) {
         const url = new URL(location.href);
@@ -300,6 +321,16 @@
             language: meta.name,
             sizePx: meta.size,
             well: meta.well,
+            glyphs:
+              key === "D"
+                ? {
+                    Боны: "cash-multiple",
+                    Золото: "circle-multiple",
+                    Серебро: "circle-multiple",
+                    "Премиумные танки": "tank",
+                    "Прокачиваемые танки": "tank",
+                  }
+                : undefined,
             rows: ROWS.map((row) => row.name),
           });
       }
