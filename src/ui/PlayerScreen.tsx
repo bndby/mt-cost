@@ -1,5 +1,6 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   SafeAreaProvider,
@@ -104,6 +105,30 @@ function ColumnLine({
   );
 }
 
+
+function ChromeButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} hitSlop={12} style={styles.chromeButton}>
+      <MaterialCommunityIcons
+        name={icon}
+        size={18}
+        color="#c9c4b6"
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <Text style={styles.textButton}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: string }) {
   if (snapshot.kind === "waiting") {
     return <WaitingPulse style={styles.columnPulse} />;
@@ -164,14 +189,18 @@ export function PlayerScreen({
       <View style={styles.top}>
         <View style={styles.topLeft}>
           {screen.retryLabel ? (
-            <Pressable onPress={onRetry} hitSlop={12}>
-              <Text style={styles.textButton}>{screen.retryLabel}</Text>
-            </Pressable>
+            <ChromeButton
+              icon="refresh"
+              label={screen.retryLabel}
+              onPress={onRetry}
+            />
           ) : null}
         </View>
-        <Pressable onPress={onSignOut} hitSlop={12}>
-          <Text style={styles.textButton}>{screen.signOutLabel}</Text>
-        </Pressable>
+        <ChromeButton
+          icon="close"
+          label={screen.signOutLabel}
+          onPress={onSignOut}
+        />
       </View>
       <View style={styles.hero}>
         <Text style={styles.kicker}>{screen.kicker}</Text>
@@ -248,6 +277,11 @@ const styles = StyleSheet.create({
     color: "#1a1408",
     fontSize: 17,
     fontWeight: "700",
+  },
+  chromeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   textButton: {
     color: "#c9c4b6",
