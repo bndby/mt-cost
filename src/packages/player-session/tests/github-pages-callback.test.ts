@@ -40,6 +40,7 @@ describe("заглушка GitHub Pages", () => {
 
   test("политика говорит, что пароль не собирается и своего сервера нет", () => {
     expect(privacyHtml).toMatch(/Lesta OpenID/);
+    expect(privacyHtml).toMatch(/WG OpenID/);
     expect(privacyHtml).toMatch(/не собирает/);
     expect(privacyHtml).toMatch(/Своего сервера у MT Cost нет/);
     expect(privacyHtml).toContain("https://bndby.github.io/mt-cost/auth/callback");

@@ -10,6 +10,7 @@ import {
 import type {
   ColumnRow,
   DisplayChip,
+  Realm,
   Screen,
   ValuationSnapshot,
 } from "../packages/player-session";
@@ -171,12 +172,18 @@ function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: str
 export function PlayerScreen({
   screen,
   onSignIn,
+  onSignInWg,
+  onChooseRealm,
+  onBackFromRealm,
   onSignOut,
   onRetry,
   onChooseDisplayCurrency,
 }: {
   screen: Screen;
   onSignIn: () => void;
+  onSignInWg: () => void;
+  onChooseRealm: (key: Realm) => void;
+  onBackFromRealm: () => void;
   onSignOut: () => void;
   onRetry: () => void;
   onChooseDisplayCurrency: (label: string) => void;
@@ -201,6 +208,43 @@ export function PlayerScreen({
         <Pressable style={styles.cta} onPress={onSignIn}>
           <Text style={styles.ctaLabel}>{screen.signInLabel}</Text>
         </Pressable>
+        <Pressable style={styles.ctaSecondary} onPress={onSignInWg}>
+          <Text style={styles.ctaSecondaryLabel}>{screen.wgSignInLabel}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (screen.kind === "choose-realm") {
+    return (
+      <View style={styles.body}>
+        <View style={styles.top}>
+          <Pressable onPress={onBackFromRealm} hitSlop={12}>
+            <Text style={styles.textButton}>{screen.backLabel}</Text>
+          </Pressable>
+        </View>
+        <View style={styles.realmCopy}>
+          <Text style={styles.kicker}>{screen.kicker}</Text>
+          <Text style={styles.realmTitle}>{screen.title}</Text>
+          <View style={styles.realmRow}>
+            {screen.realms.map((realm) => (
+              <Pressable
+                key={realm.key}
+                onPress={() => onChooseRealm(realm.key)}
+                style={[styles.realmChip, realm.selected && styles.realmChipOn]}
+              >
+                <Text
+                  style={[
+                    styles.realmChipLabel,
+                    realm.selected && styles.realmChipLabelOn,
+                  ]}
+                >
+                  {realm.key}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       </View>
     );
   }
@@ -305,6 +349,53 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+  ctaSecondary: {
+    marginTop: 10,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#9a968c",
+  },
+  ctaSecondaryLabel: {
+    color: "#f3f1ea",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  realmCopy: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  realmTitle: {
+    color: "#f3f1ea",
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: 18,
+  },
+  realmRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  realmChip: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#9a968c",
+  },
+  realmChipOn: {
+    borderWidth: 2,
+    borderColor: "#e7c46a",
+  },
+  realmChipLabel: {
+    color: "#f3f1ea",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  realmChipLabelOn: {
+    color: "#e7c46a",
   },
   textButton: {
     color: "#c9c4b6",

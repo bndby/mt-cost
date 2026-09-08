@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { LESTA_API_ORIGIN, OPEN_ID_REDIRECT_URI } from "../index";
+import {
+  LESTA_API_ORIGIN,
+  OPEN_ID_REDIRECT_URI,
+  WG_API_ORIGINS,
+} from "../index";
 import {
   APPLICATION_ID,
+  SIGNED_OUT_SCREEN,
+  WG_APPLICATION_ID,
   createHarness,
   errorCallback,
   okCallback,
@@ -12,12 +18,7 @@ describe("не вошёл и Lesta OpenID", () => {
   test("первый запуск показывает «не вошёл» и не открывает Custom Tab", () => {
     const { session, customTab } = createHarness();
 
-    expect(session.screen()).toEqual({
-      kind: "signed-out",
-      title: "Оценка",
-      subtitle: "Имущество аккаунта Мира танков.",
-      signInLabel: "Войти через Lesta",
-    });
+    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
     expect(customTab.opened).toEqual([]);
   });
 
@@ -73,12 +74,7 @@ describe("не вошёл и Lesta OpenID", () => {
       customTab.nextResult = nextResult;
       await session.signIn();
       const shown = session.screen();
-      expect(shown).toEqual({
-        kind: "signed-out",
-        title: "Оценка",
-        subtitle: "Имущество аккаунта Мира танков.",
-        signInLabel: "Войти через Lesta",
-      });
+      expect(shown).toEqual(SIGNED_OUT_SCREEN);
       expect(JSON.stringify(shown)).not.toMatch(/AUTH_|access_token|code/);
     }
   });
@@ -96,6 +92,83 @@ describe("не вошёл и Lesta OpenID", () => {
     customTab.opened = [];
     await session.signIn();
     expect(customTab.opened).toHaveLength(1);
+  });
+});
+
+describe("вход через WG: шаг выбора Реалма", () => {
+  const CHOOSE_REALM = {
+    kind: "choose-realm" as const,
+    kicker: "Войти через WG",
+    title: "Выберите Реалм",
+    backLabel: "Назад",
+    realms: [
+      { key: "NA" as const, selected: false },
+      { key: "EU" as const, selected: false },
+      { key: "ASIA" as const, selected: false },
+    ],
+  };
+
+  test("«Войти через WG» показывает шаг выбора Реалма и не открывает Custom Tab", () => {
+    const { session, customTab } = createHarness();
+
+    session.startWgSignIn();
+
+    expect(session.screen()).toEqual(CHOOSE_REALM);
+    expect(customTab.opened).toEqual([]);
+  });
+
+  test("«Назад» с шага Реалма возвращает «не вошёл» и сбрасывает выбор", () => {
+    const { session, customTab } = createHarness();
+    session.startWgSignIn();
+
+    session.backFromRealm();
+
+    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
+    expect(customTab.opened).toEqual([]);
+  });
+
+  test("выбор Реалма открывает WG OpenID на хосте Реалма", async () => {
+    const { session, customTab } = createHarness();
+    session.startWgSignIn();
+
+    await session.chooseRealm("EU");
+
+    expect(customTab.opened).toHaveLength(1);
+    const opened = new URL(customTab.opened[0]);
+    expect(opened.origin + opened.pathname).toBe(
+      `${WG_API_ORIGINS.EU}/wot/auth/login/`,
+    );
+    expect(opened.searchParams.get("application_id")).toBe(WG_APPLICATION_ID);
+    expect(opened.searchParams.get("redirect_uri")).toBe(OPEN_ID_REDIRECT_URI);
+    expect(opened.searchParams.get("display")).toBe("page");
+    expect(opened.searchParams.get("application_id")).not.toBe(APPLICATION_ID);
+  });
+
+  test("отмена Custom Tab после выбора Реалма оставляет шаг с сохранённым выбором", async () => {
+    const { session, customTab } = createHarness();
+    session.startWgSignIn();
+    await session.chooseRealm("NA");
+
+    expect(session.screen()).toEqual({
+      ...CHOOSE_REALM,
+      realms: [
+        { key: "NA", selected: true },
+        { key: "EU", selected: false },
+        { key: "ASIA", selected: false },
+      ],
+    });
+    expect(customTab.opened).toHaveLength(1);
+  });
+
+  test("«Назад» после отмены на странице WG сбрасывает выбор полностью", async () => {
+    const { session } = createHarness();
+    session.startWgSignIn();
+    await session.chooseRealm("ASIA");
+
+    session.backFromRealm();
+    session.startWgSignIn();
+
+    expect(session.screen()).toEqual(CHOOSE_REALM);
   });
 });
 
@@ -291,12 +364,7 @@ describe("мёртвый токен без устаревшей Оценки", (
 
     await session.onForeground();
 
-    expect(session.screen()).toEqual({
-      kind: "signed-out",
-      title: "Оценка",
-      subtitle: "Имущество аккаунта Мира танков.",
-      signInLabel: "Войти через Lesta",
-    });
+    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
     expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|7800/);
     expect(customTab.opened).toEqual([]);
   });
@@ -840,5 +908,149 @@ describe("переключатель валюты показа", () => {
         ],
       },
     });
+  });
+});
+
+describe("вход через WG: Оценка", () => {
+  async function signInWg(
+    harness: ReturnType<typeof createHarness>,
+    realm: "NA" | "EU" | "ASIA" = "EU",
+  ) {
+    harness.customTab.succeedWith(okCallback());
+    harness.session.startWgSignIn();
+    await harness.session.chooseRealm(realm);
+  }
+
+  test("успешный WG-вход считает пакет в долларах и ставит доллар по умолчанию", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 50_000,
+      bonds: 0,
+      hangarTankIds: [],
+      rented: [],
+    };
+    await signInWg(harness);
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      kind: "valuation",
+      kicker: "[EU] Player",
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 100,
+        rows: [{ name: "Золото", count: 50_000, amount: 100 }],
+        chips: [
+          { label: "доллар", symbol: "$", selected: true },
+          { label: "рос. рубль", symbol: "₽", selected: false },
+          { label: "бел. рубль", symbol: "Br", selected: false },
+        ],
+      },
+    });
+    expect(harness.lesta.logoutCalls).toEqual([]);
+    expect(harness.wgRealms).toEqual(["EU"]);
+  });
+
+  test("боны WG идут в столбик по той же договорённости 1 бона = 2 золота", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 50_000,
+      hangarTankIds: [],
+      rented: [],
+    };
+    await signInWg(harness);
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 200,
+        rows: [{ name: "Боны", count: 50_000, amount: 200 }],
+      },
+    });
+  });
+
+  test("в WG-сессии «рос. рубль» переводит доллары пакета через RUB_PER_USD", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 50_000,
+      bonds: 0,
+      hangarTankIds: [],
+      rented: [],
+    };
+    await signInWg(harness);
+    await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+    harness.session.chooseDisplayCurrency("рос. рубль");
+
+    expect(harness.session.screen()).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 8560.07,
+        rows: [{ name: "Золото", count: 50_000, amount: 8560.07 }],
+        chips: [
+          { label: "доллар", symbol: "$", selected: false },
+          { label: "рос. рубль", symbol: "₽", selected: true },
+          { label: "бел. рубль", symbol: "Br", selected: false },
+        ],
+      },
+    });
+  });
+
+  test("кикер WG — Реалм первым, затем клан-тег и ник", async () => {
+    const harness = createHarness();
+    harness.wg.clan = "RED";
+    harness.customTab.succeedWith(okCallback({ nickname: "Ace" }));
+    harness.session.startWgSignIn();
+    await harness.session.chooseRealm("NA");
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.kicker === "[NA] [RED] Ace",
+    );
+    expect(screen).toMatchObject({ kicker: "[NA] [RED] Ace" });
+  });
+
+  test("«Выйти» после WG вызывает logout WG-клиента, не Lesta", async () => {
+    const harness = createHarness();
+    harness.customTab.succeedWith(okCallback({ accessToken: "wg-token" }));
+    harness.session.startWgSignIn();
+    await harness.session.chooseRealm("ASIA");
+    await waitForScreen(harness.session, (s) => s.kind === "valuation");
+
+    await harness.session.signOut();
+
+    expect(harness.session.screen()).toEqual(SIGNED_OUT_SCREEN);
+    expect(harness.wg.logoutCalls).toEqual(["wg-token"]);
+    expect(harness.lesta.logoutCalls).toEqual([]);
+  });
+
+  test("срыв WG OpenID (AUTH_*) оставляет шаг Реалма без кодов", async () => {
+    const { session, customTab } = createHarness();
+    session.startWgSignIn();
+    customTab.nextResult = {
+      type: "success",
+      url: errorCallback("AUTH_CANCEL"),
+    };
+    await session.chooseRealm("EU");
+
+    expect(session.screen()).toMatchObject({
+      kind: "choose-realm",
+      realms: [
+        { key: "NA", selected: false },
+        { key: "EU", selected: true },
+        { key: "ASIA", selected: false },
+      ],
+    });
+    expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|access_token|code/);
   });
 });

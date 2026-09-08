@@ -11,12 +11,25 @@ import type {
 } from "../index";
 
 export const APPLICATION_ID = "test-application-id";
+export const WG_APPLICATION_ID = "test-wg-application-id";
+
+export const SIGNED_OUT_SCREEN = {
+  kind: "signed-out" as const,
+  title: "Оценка" as const,
+  subtitle: "Имущество танкового аккаунта.",
+  signInLabel: "Войти через Lesta",
+  wgSignInLabel: "Войти через WG",
+};
 
 export const SESSION_RATES = {
   silverPerGold: 400,
   goldPackGold: 50_000,
   goldPackRubles: 7_800,
   goldPerBond: 2,
+  wgSilverPerGold: 400,
+  wgGoldPackGold: 50_000,
+  wgGoldPackUsd: 100,
+  wgGoldPerBond: 2,
   rubPerByn: 28.1618,
   rubPerUsd: 85.6007,
 } as const;
@@ -96,13 +109,23 @@ export function createHarness() {
   const clock = new FakeClock();
   const customTab = new FakeCustomTab();
   const lesta = new FakeLesta();
+  const wg = new FakeLesta();
+  const wgRealms: string[] = [];
   const session = createPlayerSession({
     clock,
     customTab,
     lesta,
-    config: { applicationId: APPLICATION_ID, ...SESSION_RATES },
+    wgForRealm: (realm) => {
+      wgRealms.push(realm);
+      return wg;
+    },
+    config: {
+      applicationId: APPLICATION_ID,
+      wgApplicationId: WG_APPLICATION_ID,
+      ...SESSION_RATES,
+    },
   });
-  return { session, clock, customTab, lesta };
+  return { session, clock, customTab, lesta, wg, wgRealms };
 }
 
 export function waitForScreen(

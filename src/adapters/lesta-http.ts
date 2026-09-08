@@ -52,12 +52,14 @@ function numericOrNull(value: unknown): number | null {
 export function createHttpLesta(deps: {
   applicationId: string;
   fetch: typeof fetch;
+  origin?: string;
 }): LestaClient {
+  const origin = deps.origin ?? LESTA_API_ORIGIN;
   async function getJson(
     path: string,
     params: Record<string, string>,
   ): Promise<LestaJson> {
-    const url = new URL(path, `${LESTA_API_ORIGIN}/`);
+    const url = new URL(path, `${origin}/`);
     url.searchParams.set("application_id", deps.applicationId);
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
