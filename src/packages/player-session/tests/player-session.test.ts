@@ -284,6 +284,217 @@ describe("успешная Оценка: сумма и столбик", () => {
     });
   });
 
+  test("ТПА считает дни вверх, раскладывает их по пакетам и входит в общую сумму", async () => {
+    const { session, customTab, lesta, clock } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      premiumExpiresAt: clock.nowUnixSeconds + 10 * 24 * 3600,
+      hangarTankIds: [],
+      rented: [],
+    };
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 296.4,
+        rows: [
+          {
+            line: "premiumAccount",
+            name: "Прем. акк",
+            count: 10,
+            amount: 296.4,
+          },
+        ],
+      },
+    });
+  });
+
+  test("ТПА Мира танков на 360 дней раскладывается пакетами 30 дней, не пакетом WG", async () => {
+    const { session, customTab, lesta, clock } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      premiumExpiresAt: clock.nowUnixSeconds + 360 * 24 * 3600,
+      hangarTankIds: [],
+      rented: [],
+    };
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 4680,
+        rows: [
+          {
+            line: "premiumAccount",
+            name: "Прем. акк",
+            count: 360,
+            amount: 4680,
+          },
+        ],
+      },
+    });
+  });
+
+  test("свободный опыт Мира танков — строка по 25 XP за золото", async () => {
+    const { session, customTab, lesta } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      freeXp: 25_000,
+      hangarTankIds: [],
+      rented: [],
+    };
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 156,
+        rows: [
+          {
+            line: "freeXp",
+            name: "Свободный опыт",
+            count: 25_000,
+            amount: 156,
+          },
+        ],
+      },
+    });
+  });
+
+  test("наградной танк без каталога берёт техническую стоимость уровня", async () => {
+    const { session, customTab, lesta } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      hangarTankIds: [8],
+      rented: [],
+    };
+    lesta.vehicles = [
+      {
+        tankId: 8,
+        priceSilver: 0,
+        priceGold: 0,
+        tier: 8,
+        isPremium: false,
+        isGift: true,
+      },
+    ];
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 1716,
+        rows: [
+          {
+            line: "premium",
+            name: "Премиумные танки",
+            count: 1,
+            amount: 1716,
+          },
+        ],
+      },
+    });
+  });
+
+  test("личные резервы: витрина золота, USED выкинут, не словарь — без строки", async () => {
+    const { session, customTab, lesta } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      hangarTankIds: [],
+      rented: [],
+      boosters: [
+        { boosterId: 121001, count: 2, state: "INACTIVE" },
+        { boosterId: 121000, count: 1, state: "ACTIVE" },
+        { boosterId: 9, count: 4, state: "USED" },
+      ],
+    };
+    lesta.boosterPrices = [
+      { boosterId: 121001, priceGold: 150 },
+      { boosterId: 121000, priceGold: 100 },
+      { boosterId: 9, priceGold: 50 },
+    ];
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 62.4,
+        rows: [
+          {
+            line: "boosters",
+            name: "Личные резервы",
+            count: 3,
+            amount: 62.4,
+          },
+        ],
+      },
+    });
+  });
+
+  test("истёкший ТПА не показывается и не входит в сумму", async () => {
+    const { session, customTab, lesta, clock } = createHarness();
+    lesta.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      premiumExpiresAt: clock.nowUnixSeconds,
+      hangarTankIds: [],
+      rented: [],
+    };
+    customTab.succeedWith(okCallback());
+
+    await session.signIn();
+    const screen = await waitForScreen(
+      session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+
+    expect(screen).toMatchObject({
+      snapshot: { kind: "numbers", heroAmount: 0, rows: [] },
+    });
+  });
+
   test("нулевой баланс валюты и пустая корзина схлопываются; порядок живых строк стабилен", async () => {
     const { session, customTab, lesta } = createHarness();
     lesta.account = {
@@ -952,6 +1163,97 @@ describe("вход через WG: Оценка", () => {
     });
     expect(harness.lesta.logoutCalls).toEqual([]);
     expect(harness.wgRealms).toEqual(["EU"]);
+  });
+
+  test("свободный опыт WG идёт в столбик по курсу конвертации 25 XP за золото", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      freeXp: 25_000,
+      hangarTankIds: [],
+      rented: [],
+    };
+    await signInWg(harness);
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 2,
+        rows: [
+          {
+            line: "freeXp",
+            name: "Свободный опыт",
+            count: 25_000,
+            amount: 2,
+          },
+        ],
+      },
+    });
+  });
+
+  test("WG-ТПА 360 дней раскладывается пакетом 20 500 золота, не таблицей Lesta", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      premiumExpiresAt: harness.clock.nowUnixSeconds + 360 * 24 * 3600,
+      hangarTankIds: [],
+      rented: [],
+    };
+    await signInWg(harness);
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+    expect(screen).toMatchObject({
+      snapshot: {
+        kind: "numbers",
+        heroAmount: 41,
+        rows: [
+          {
+            line: "premiumAccount",
+            name: "Прем. акк",
+            count: 360,
+            amount: 41,
+          },
+        ],
+      },
+    });
+  });
+
+  test("наградной танк WG без каталога не берёт таблицу уровней Lesta", async () => {
+    const harness = createHarness();
+    harness.wg.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      hangarTankIds: [8],
+      rented: [],
+    };
+    harness.wg.vehicles = [
+      {
+        tankId: 8,
+        priceSilver: 0,
+        priceGold: 0,
+        tier: 8,
+        isPremium: false,
+        isGift: true,
+      },
+    ];
+    await signInWg(harness);
+    const screen = await waitForScreen(
+      harness.session,
+      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
+    );
+    expect(screen).toMatchObject({
+      snapshot: { kind: "numbers", heroAmount: 0, rows: [] },
+    });
   });
 
   test("боны WG идут в столбик по той же договорённости 1 бона = 2 золота", async () => {

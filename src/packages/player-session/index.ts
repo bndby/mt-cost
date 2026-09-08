@@ -7,12 +7,14 @@ export {
 } from "./lib/session";
 export type {
   AccountSnapshot,
+  BoosterPrice,
   Clock,
   ColumnRow,
   CustomTab,
   CustomTabResult,
   DisplayChip,
   LestaClient,
+  OwnedBooster,
   PlayerSession,
   PlayerSessionConfig,
   Realm,

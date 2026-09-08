@@ -27,7 +27,10 @@ const COLUMN_GLYPH: Record<
   bonds: { name: "cash-multiple", color: "#c17a3a" },
   gold: { name: "circle-multiple", color: "#e6c15a" },
   silver: { name: "circle-multiple", color: "#c8d0d8" },
+  freeXp: { name: "star-four-points", color: "#c8d0d8" },
+  boosters: { name: "flash", color: "#e6c15a" },
   premium: { name: "tank", color: "#e6c15a" },
+  premiumAccount: { name: "clock-outline", color: "#e6c15a" },
   researchable: { name: "tank", color: "#c8d0d8" },
 };
 

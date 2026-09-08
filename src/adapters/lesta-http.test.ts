@@ -33,6 +33,8 @@ describe("HTTP Lesta: боны и клан-тег", () => {
               credits: 10,
               gold: 20,
               bonds: 7,
+              is_premium: true,
+              premium_expires_at: 1_700_086_400,
               garage: [],
             },
           },
@@ -44,7 +46,98 @@ describe("HTTP Lesta: боны и клан-тег", () => {
       silver: 10,
       gold: 20,
       bonds: 7,
+      premiumExpiresAt: 1_700_086_400,
     });
+  });
+
+  test("account/info читает free_xp, extra boosters и словарь резервов по id", async () => {
+    const { client, opened } = createClient((url) => {
+      if (url.pathname.includes("encyclopedia/boosters")) {
+        return jsonResponse({
+          status: "ok",
+          data: {
+            "121001": {
+              booster_id: 121001,
+              price_gold: 150,
+              price_credit: 0,
+              resource: "experience",
+              lifetime: 3600,
+              description: "+100%",
+            },
+          },
+        });
+      }
+      if (url.pathname.includes("encyclopedia/vehicles")) {
+        return jsonResponse({
+          status: "ok",
+          data: {
+            "8": {
+              tank_id: 8,
+              price_credit: 0,
+              price_gold: 0,
+              tier: 8,
+              is_premium: false,
+              is_gift: true,
+            },
+          },
+        });
+      }
+      return jsonResponse({
+        status: "ok",
+        data: {
+          "42": {
+            private: {
+              credits: 0,
+              gold: 0,
+              bonds: 0,
+              free_xp: 25000,
+              garage: [8],
+              boosters: {
+                "121001": {
+                  count: 2,
+                  expiration_time: 0,
+                  state: "INACTIVE",
+                },
+                "9": { count: 1, expiration_time: 0, state: "USED" },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    await expect(client.fetchAccount("token", 42)).resolves.toMatchObject({
+      freeXp: 25_000,
+      hangarTankIds: [8],
+      boosters: [
+        { boosterId: 9, count: 1, state: "USED" },
+        { boosterId: 121001, count: 2, state: "INACTIVE" },
+      ],
+    });
+    expect(opened[0].searchParams.get("extra")).toContain("private.boosters");
+
+    await expect(client.fetchBoosterPrices()).resolves.toEqual([
+      {
+        boosterId: 121001,
+        priceGold: 150,
+        resource: "experience",
+        lifetime: 3600,
+        description: "+100%",
+      },
+    ]);
+
+    await expect(client.fetchVehiclePrices([8])).resolves.toEqual([
+      {
+        tankId: 8,
+        priceSilver: 0,
+        priceGold: 0,
+        tier: 8,
+        isPremium: false,
+        isGift: true,
+      },
+    ]);
+    expect(opened[2].searchParams.get("fields")).toContain("tier");
+    expect(opened[2].searchParams.get("fields")).toContain("is_gift");
   });
 
   test("clans/accountinfo отдаёт тег, null вне клана, без access_token", async () => {

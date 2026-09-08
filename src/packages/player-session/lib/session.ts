@@ -1,4 +1,9 @@
-import { uniqueTankIds, valueAccount } from "./valuation";
+import {
+  LESTA_PREMIUM_PACKAGES,
+  WG_PREMIUM_PACKAGES,
+  uniqueTankIds,
+  valueAccount,
+} from "./valuation";
 
 export const OPEN_ID_REDIRECT_URI =
   "https://bndby.github.io/mt-cost/auth/callback";
@@ -19,7 +24,15 @@ export type DisplayChip = {
 };
 
 export type ColumnRow = {
-  line: "bonds" | "gold" | "silver" | "premium" | "researchable";
+  line:
+    | "bonds"
+    | "gold"
+    | "silver"
+    | "freeXp"
+    | "boosters"
+    | "premium"
+    | "premiumAccount"
+    | "researchable";
   name: string;
   count: number;
   amount: number;
@@ -76,18 +89,38 @@ export type RentedTank = {
   compensationGold: number;
 };
 
+export type OwnedBooster = {
+  boosterId: number;
+  count: number;
+  state: string;
+};
+
 export type AccountSnapshot = {
   silver: number;
   gold: number;
   bonds: number;
+  freeXp?: number;
+  premiumExpiresAt?: number | null;
   hangarTankIds: number[];
   rented: RentedTank[];
+  boosters?: OwnedBooster[];
 };
 
 export type VehiclePrice = {
   tankId: number;
   priceSilver: number | null;
   priceGold: number | null;
+  tier?: number | null;
+  isPremium?: boolean;
+  isGift?: boolean;
+};
+
+export type BoosterPrice = {
+  boosterId: number;
+  priceGold: number | null;
+  resource?: string | null;
+  lifetime?: number | null;
+  description?: string | null;
 };
 
 export type LestaClient = {
@@ -100,6 +133,7 @@ export type LestaClient = {
     accountId: number,
   ): Promise<AccountSnapshot>;
   fetchVehiclePrices(tankIds: number[]): Promise<VehiclePrice[]>;
+  fetchBoosterPrices(): Promise<BoosterPrice[]>;
   fetchClanTag(accountId: number): Promise<string | null>;
 };
 
@@ -110,10 +144,12 @@ export type PlayerSessionConfig = {
   goldPackGold: number;
   goldPackRubles: number;
   goldPerBond: number;
+  freeXpPerGold: number;
   wgSilverPerGold: number;
   wgGoldPackGold: number;
   wgGoldPackUsd: number;
   wgGoldPerBond: number;
+  wgFreeXpPerGold: number;
   rubPerByn: number;
   rubPerUsd: number;
 };
@@ -249,6 +285,10 @@ export function createPlayerSession(deps: {
         goldPackGold: deps.config.wgGoldPackGold,
         goldPackRubles: deps.config.wgGoldPackUsd,
         goldPerBond: deps.config.wgGoldPerBond,
+        freeXpPerGold: deps.config.wgFreeXpPerGold,
+        premiumPackages: WG_PREMIUM_PACKAGES,
+        valueTanksByTechnicalTier: false,
+        valueBoostersByTechnicalType: false,
       };
     }
     return {
@@ -256,6 +296,10 @@ export function createPlayerSession(deps: {
       goldPackGold: deps.config.goldPackGold,
       goldPackRubles: deps.config.goldPackRubles,
       goldPerBond: deps.config.goldPerBond,
+      freeXpPerGold: deps.config.freeXpPerGold,
+      premiumPackages: LESTA_PREMIUM_PACKAGES,
+      valueTanksByTechnicalTier: true,
+      valueBoostersByTechnicalType: true,
     };
   }
 
@@ -391,7 +435,22 @@ export function createPlayerSession(deps: {
           ? []
           : await client.fetchVehiclePrices(tankIds);
       if (generation !== collectGeneration || !auth) return;
-      const valued = valueAccount(account, tankIds, prices, valuationRates());
+      const ownedBoosters = (account.boosters ?? []).filter(
+        (row) => row.state !== "USED" && row.count > 0,
+      );
+      const boosterPrices =
+        ownedBoosters.length === 0
+          ? []
+          : await client.fetchBoosterPrices();
+      if (generation !== collectGeneration || !auth) return;
+      const valued = valueAccount(
+        account,
+        tankIds,
+        prices,
+        boosterPrices,
+        valuationRates(),
+        deps.clock.nowUnixSeconds,
+      );
       collected = {
         heroAmount: valued.heroAmount,
         rows: valued.rows,

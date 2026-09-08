@@ -4,6 +4,7 @@ import type {
   Clock,
   CustomTab,
   CustomTabResult,
+  BoosterPrice,
   LestaClient,
   PlayerSession,
   Screen,
@@ -26,10 +27,12 @@ export const SESSION_RATES = {
   goldPackGold: 50_000,
   goldPackRubles: 7_800,
   goldPerBond: 2,
+  freeXpPerGold: 25,
   wgSilverPerGold: 400,
   wgGoldPackGold: 50_000,
   wgGoldPackUsd: 100,
   wgGoldPerBond: 2,
+  wgFreeXpPerGold: 25,
   rubPerByn: 28.1618,
   rubPerUsd: 85.6007,
 } as const;
@@ -65,10 +68,12 @@ export class FakeLesta implements LestaClient {
     silver: 0,
     gold: 0,
     bonds: 0,
+    premiumExpiresAt: null,
     hangarTankIds: [],
     rented: [],
   };
   vehicles: VehiclePrice[] | Error = [];
+  boosterPrices: BoosterPrice[] | Error = [];
   accountGate: Promise<void> = Promise.resolve();
   clan: string | null | Error = null;
   clanGate: Promise<void> = Promise.resolve();
@@ -93,6 +98,11 @@ export class FakeLesta implements LestaClient {
   async fetchVehiclePrices(): Promise<VehiclePrice[]> {
     if (this.vehicles instanceof Error) throw this.vehicles;
     return this.vehicles;
+  }
+
+  async fetchBoosterPrices(): Promise<BoosterPrice[]> {
+    if (this.boosterPrices instanceof Error) throw this.boosterPrices;
+    return this.boosterPrices;
   }
 
   async fetchClanTag(): Promise<string | null> {
