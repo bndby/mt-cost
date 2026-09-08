@@ -1,6 +1,6 @@
 {
   "name": "mt-cost",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -10,12 +10,14 @@
     "android": "expo run:android",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build:android": "npx eas-cli build --platform android --profile production",
+    "build:android": "npx eas-cli build --platform android --profile production --local",
     "submit:android": "npx eas-cli submit --platform android --profile production",
     "play-release": "bash scripts/play-release.sh"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~57.0.18",
+    "expo-build-properties": "~57.0.17",
     "expo-constants": "~57.0.16",
     "expo-status-bar": "~57.0.1",
     "expo-web-browser": "~57.0.2",

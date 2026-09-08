@@ -1,5 +1,6 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   SafeAreaProvider,
@@ -14,6 +15,20 @@ import type {
 } from "../packages/player-session";
 import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
 import { RubAmount } from "./RubAmount";
+
+const COLUMN_GLYPH: Record<
+  ColumnRow["line"],
+  {
+    name: ComponentProps<typeof MaterialCommunityIcons>["name"];
+    color: string;
+  }
+> = {
+  bonds: { name: "cash-multiple", color: "#c17a3a" },
+  gold: { name: "circle-multiple", color: "#e6c15a" },
+  silver: { name: "circle-multiple", color: "#c8d0d8" },
+  premium: { name: "tank", color: "#e6c15a" },
+  researchable: { name: "tank", color: "#c8d0d8" },
+};
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
@@ -96,11 +111,44 @@ function ColumnLine({
   row: ColumnRow;
   symbol: string;
 }) {
+  const glyph = COLUMN_GLYPH[row.line];
   return (
-    <Text style={styles.rowName}>
-      {row.name} ({formatCount(row.count)}) ={" "}
-      <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
-    </Text>
+    <View style={styles.row}>
+      <MaterialCommunityIcons
+        name={glyph.name}
+        size={22}
+        color={glyph.color}
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <Text style={styles.rowName}>
+        {row.name} ({formatCount(row.count)}) ={" "}
+        <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
+      </Text>
+    </View>
+  );
+}
+
+function ChromeButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} hitSlop={12} style={styles.chromeButton}>
+      <MaterialCommunityIcons
+        name={icon}
+        size={18}
+        color="#c9c4b6"
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <Text style={styles.textButton}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -114,7 +162,7 @@ function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: str
   return (
     <View style={styles.column}>
       {snapshot.rows.map((row) => (
-        <ColumnLine key={row.name} row={row} symbol={symbol} />
+        <ColumnLine key={row.line} row={row} symbol={symbol} />
       ))}
     </View>
   );
@@ -164,14 +212,18 @@ export function PlayerScreen({
       <View style={styles.top}>
         <View style={styles.topLeft}>
           {screen.retryLabel ? (
-            <Pressable onPress={onRetry} hitSlop={12}>
-              <Text style={styles.textButton}>{screen.retryLabel}</Text>
-            </Pressable>
+            <ChromeButton
+              icon="refresh"
+              label={screen.retryLabel}
+              onPress={onRetry}
+            />
           ) : null}
         </View>
-        <Pressable onPress={onSignOut} hitSlop={12}>
-          <Text style={styles.textButton}>{screen.signOutLabel}</Text>
-        </Pressable>
+        <ChromeButton
+          icon="close"
+          label={screen.signOutLabel}
+          onPress={onSignOut}
+        />
       </View>
       <View style={styles.hero}>
         <Text style={styles.kicker}>{screen.kicker}</Text>
@@ -249,6 +301,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
+  chromeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   textButton: {
     color: "#c9c4b6",
     fontSize: 14,
@@ -301,7 +358,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   rowName: {
+    flex: 1,
     color: "#f3f1ea",
     fontSize: 14,
     lineHeight: 20,

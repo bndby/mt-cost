@@ -16,7 +16,7 @@ export const SESSION_RATES = {
   silverPerGold: 400,
   goldPackGold: 50_000,
   goldPackRubles: 7_800,
-  goldPerBond: 1,
+  goldPerBond: 2,
   rubPerByn: 28.1618,
   rubPerUsd: 85.6007,
 } as const;
