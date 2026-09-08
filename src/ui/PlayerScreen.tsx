@@ -16,6 +16,20 @@ import type {
 import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
 import { RubAmount } from "./RubAmount";
 
+const COLUMN_GLYPH: Record<
+  ColumnRow["line"],
+  {
+    name: ComponentProps<typeof MaterialCommunityIcons>["name"];
+    color: string;
+  }
+> = {
+  bonds: { name: "cash-multiple", color: "#c17a3a" },
+  gold: { name: "circle-multiple", color: "#e6c15a" },
+  silver: { name: "circle-multiple", color: "#c8d0d8" },
+  premium: { name: "tank", color: "#e6c15a" },
+  researchable: { name: "tank", color: "#c8d0d8" },
+};
+
 function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
 }
@@ -97,14 +111,23 @@ function ColumnLine({
   row: ColumnRow;
   symbol: string;
 }) {
+  const glyph = COLUMN_GLYPH[row.line];
   return (
-    <Text style={styles.rowName}>
-      {row.name} ({formatCount(row.count)}) ={" "}
-      <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
-    </Text>
+    <View style={styles.row}>
+      <MaterialCommunityIcons
+        name={glyph.name}
+        size={22}
+        color={glyph.color}
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <Text style={styles.rowName}>
+        {row.name} ({formatCount(row.count)}) ={" "}
+        <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
+      </Text>
+    </View>
   );
 }
-
 
 function ChromeButton({
   icon,
@@ -139,7 +162,7 @@ function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: str
   return (
     <View style={styles.column}>
       {snapshot.rows.map((row) => (
-        <ColumnLine key={row.name} row={row} symbol={symbol} />
+        <ColumnLine key={row.line} row={row} symbol={symbol} />
       ))}
     </View>
   );
@@ -335,7 +358,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   rowName: {
+    flex: 1,
     color: "#f3f1ea",
     fontSize: 14,
     lineHeight: 20,

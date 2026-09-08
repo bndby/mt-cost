@@ -139,9 +139,14 @@ describe("успешная Оценка: сумма и столбик", () => {
         kind: "numbers",
         heroAmount: 7956.156,
         rows: [
-          { name: "Золото", count: 50_000, amount: 7800 },
-          { name: "Серебро", count: 400, amount: 0.156 },
-          { name: "Прокачиваемые танки", count: 1, amount: 156 },
+          { line: "gold", name: "Золото", count: 50_000, amount: 7800 },
+          { line: "silver", name: "Серебро", count: 400, amount: 0.156 },
+          {
+            line: "researchable",
+            name: "Прокачиваемые танки",
+            count: 1,
+            amount: 156,
+          },
         ],
         chips: [
           { label: "рос. рубль", symbol: "₽", selected: true },
@@ -180,7 +185,7 @@ describe("успешная Оценка: сумма и столбик", () => {
     });
   });
 
-  test("боны входят в сумму по снимку 1 бон = 1 золото", async () => {
+  test("боны входят в сумму по снимку 1 бон = 2 золота", async () => {
     const { session, customTab, lesta } = createHarness();
     lesta.account = {
       silver: 0,
@@ -200,8 +205,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 1.56,
-        rows: [{ name: "Боны", count: 10, amount: 1.56 }],
+        heroAmount: 3.12,
+        rows: [{ line: "bonds", name: "Боны", count: 10, amount: 3.12 }],
       },
     });
   });
@@ -231,8 +236,8 @@ describe("успешная Оценка: сумма и столбик", () => {
         kind: "numbers",
         heroAmount: 780,
         rows: [
-          { name: "Золото", count: 2_500, amount: 390 },
-          { name: "Премиумные танки", count: 1, amount: 390 },
+          { line: "gold", name: "Золото", count: 2_500, amount: 390 },
+          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
         ],
       },
     });
@@ -328,8 +333,13 @@ describe("правила танков в Оценке", () => {
         kind: "numbers",
         heroAmount: 546,
         rows: [
-          { name: "Премиумные танки", count: 1, amount: 390 },
-          { name: "Прокачиваемые танки", count: 1, amount: 156 },
+          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
+          {
+            line: "researchable",
+            name: "Прокачиваемые танки",
+            count: 1,
+            amount: 156,
+          },
         ],
       },
     });
@@ -359,7 +369,9 @@ describe("правила танков в Оценке", () => {
       snapshot: {
         kind: "numbers",
         heroAmount: 390,
-        rows: [{ name: "Премиумные танки", count: 1, amount: 390 }],
+        rows: [
+          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
+        ],
       },
     });
   });
@@ -686,7 +698,9 @@ describe("переключатель валюты показа", () => {
       snapshot: {
         kind: "numbers",
         heroAmount: 7800,
-        rows: [{ name: "Золото", count: 50_000, amount: 7800 }],
+        rows: [
+          { line: "gold", name: "Золото", count: 50_000, amount: 7800 },
+        ],
         chips: [
           { label: "рос. рубль", symbol: "₽", selected: true },
           { label: "бел. рубль", symbol: "Br", selected: false },
@@ -700,7 +714,14 @@ describe("переключатель валюты показа", () => {
       snapshot: {
         kind: "numbers",
         heroAmount: 276.9709322557507,
-        rows: [{ name: "Золото", count: 50_000, amount: 276.9709322557507 }],
+        rows: [
+          {
+            line: "gold",
+            name: "Золото",
+            count: 50_000,
+            amount: 276.9709322557507,
+          },
+        ],
         chips: [
           { label: "рос. рубль", symbol: "₽", selected: false },
           { label: "бел. рубль", symbol: "Br", selected: true },
@@ -714,7 +735,14 @@ describe("переключатель валюты показа", () => {
       snapshot: {
         kind: "numbers",
         heroAmount: 91.12075018078123,
-        rows: [{ name: "Золото", count: 50_000, amount: 91.12075018078123 }],
+        rows: [
+          {
+            line: "gold",
+            name: "Золото",
+            count: 50_000,
+            amount: 91.12075018078123,
+          },
+        ],
         chips: [
           { label: "рос. рубль", symbol: "₽", selected: false },
           { label: "бел. рубль", symbol: "Br", selected: false },
@@ -760,7 +788,14 @@ describe("переключатель валюты показа", () => {
       snapshot: {
         kind: "numbers",
         heroAmount: 13.848546612787535,
-        rows: [{ name: "Золото", count: 2_500, amount: 13.848546612787535 }],
+        rows: [
+          {
+            line: "gold",
+            name: "Золото",
+            count: 2_500,
+            amount: 13.848546612787535,
+          },
+        ],
         chips: [
           { label: "рос. рубль", symbol: "₽", selected: false },
           { label: "бел. рубль", symbol: "Br", selected: true },

@@ -5,7 +5,7 @@ const config: ExpoConfig = {
   slug: "mt-cost",
   owner: "bndby",
   scheme: "mtcost",
-  version: "1.0.0",
+  version: "1.1.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
@@ -14,15 +14,27 @@ const config: ExpoConfig = {
   },
   android: {
     package: "by.bnd.mtcost",
+    versionCode: 4,
     adaptiveIcon: {
-      backgroundColor: "#12141a",
+      backgroundColor: "#000000",
       foregroundImage: "./assets/android-icon-foreground.png",
       backgroundImage: "./assets/android-icon-background.png",
       monochromeImage: "./assets/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: false,
   },
-  plugins: ["expo-web-browser"],
+  plugins: [
+    "expo-web-browser",
+    [
+      "expo-build-properties",
+      {
+        android: {
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
+      },
+    ],
+  ],
   web: {
     favicon: "./assets/favicon.png",
   },
@@ -34,7 +46,7 @@ const config: ExpoConfig = {
     silverPerGold: process.env.SILVER_PER_GOLD ?? "400",
     goldPackGold: process.env.GOLD_PACK_GOLD ?? "50000",
     goldPackRubles: process.env.GOLD_PACK_RUBLES ?? "7800",
-    goldPerBond: process.env.GOLD_PER_BOND ?? "1",
+    goldPerBond: process.env.GOLD_PER_BOND ?? "2",
     rubPerUsd: process.env.RUB_PER_USD ?? "85.6007",
     rubPerByn: process.env.RUB_PER_BYN ?? "28.1618",
   },

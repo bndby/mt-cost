@@ -12,6 +12,7 @@ export type DisplayChip = {
 };
 
 export type ColumnRow = {
+  line: "bonds" | "gold" | "silver" | "premium" | "researchable";
   name: string;
   count: number;
   amount: number;
@@ -191,8 +192,7 @@ export function createPlayerSession(deps: {
       kind: "numbers",
       heroAmount: convert(heroRubles),
       rows: rows.map((row) => ({
-        name: row.name,
-        count: row.count,
+        ...row,
         amount: convert(row.amount),
       })),
       chips: displayMoneys().map((item) => ({

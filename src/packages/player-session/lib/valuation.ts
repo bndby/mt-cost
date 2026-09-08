@@ -24,11 +24,12 @@ export function uniqueTankIds(
 
 function pushRow(
   rows: ColumnRow[],
+  line: ColumnRow["line"],
   name: string,
   count: number,
   amount: number,
 ) {
-  if (count > 0) rows.push({ name, count, amount });
+  if (count > 0) rows.push({ line, name, count, amount });
 }
 
 export function valueAccount(
@@ -61,25 +62,35 @@ export function valueAccount(
   const rows: ColumnRow[] = [];
   pushRow(
     rows,
+    "bonds",
     "Боны",
     account.bonds,
     rublesFromGold(account.bonds * rates.goldPerBond, rates),
   );
-  pushRow(rows, "Золото", account.gold, rublesFromGold(account.gold, rates));
   pushRow(
     rows,
+    "gold",
+    "Золото",
+    account.gold,
+    rublesFromGold(account.gold, rates),
+  );
+  pushRow(
+    rows,
+    "silver",
     "Серебро",
     account.silver,
     rublesFromGold(account.silver / rates.silverPerGold, rates),
   );
   pushRow(
     rows,
+    "premium",
     "Премиумные танки",
     premiumCount,
     rublesFromGold(premiumGold, rates),
   );
   pushRow(
     rows,
+    "researchable",
     "Прокачиваемые танки",
     researchableCount,
     rublesFromGold(researchableSilver / rates.silverPerGold, rates),
