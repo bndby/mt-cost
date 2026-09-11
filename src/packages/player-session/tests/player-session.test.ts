@@ -258,7 +258,7 @@ describe("успешная Оценка: сумма и столбик", () => {
     });
   });
 
-  test("боны входят в сумму по снимку 1 бон = 2 золота", async () => {
+  test("боны входят в сумму по снимку 1 бон = 1,6 золота", async () => {
     const { session, customTab, lesta } = createHarness();
     lesta.account = {
       silver: 0,
@@ -278,8 +278,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 3.12,
-        rows: [{ line: "bonds", name: "Боны", count: 10, amount: 3.12 }],
+        heroAmount: 2.496,
+        rows: [{ line: "bonds", name: "Боны", count: 10, amount: 2.496 }],
       },
     });
   });
@@ -1256,7 +1256,7 @@ describe("вход через WG: Оценка", () => {
     });
   });
 
-  test("боны WG идут в столбик по той же договорённости 1 бона = 2 золота", async () => {
+  test("боны WG идут в столбик по той же договорённости 1 бона = 1,6 золота", async () => {
     const harness = createHarness();
     harness.wg.account = {
       silver: 0,
@@ -1273,8 +1273,8 @@ describe("вход через WG: Оценка", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 200,
-        rows: [{ name: "Боны", count: 50_000, amount: 200 }],
+        heroAmount: 160,
+        rows: [{ name: "Боны", count: 50_000, amount: 160 }],
       },
     });
   });
