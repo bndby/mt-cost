@@ -34,10 +34,10 @@ MT Cost показывает номинальную оценку имущест�
 - Графический файл: `store/google-play/feature-graphic.png` (1024×500, без альфы)
 - Скриншоты телефона: `store/google-play/screenshots/` (минимум два, 1080×1920)
 
-## Релиз 1.2.0
+## Релиз 1.3.0
 
-- Версия: `1.2.0`
-- versionCode: `5`
+- Версия: `1.3.0`
+- versionCode: `6`
 - Что нового (до 500 символов): `store/google-play/whatsnew.md`
 
 ## Категория

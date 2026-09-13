@@ -5,7 +5,7 @@ const config: ExpoConfig = {
   slug: "mt-cost",
   owner: "bndby",
   scheme: "mtcost",
-  version: "1.2.0",
+  version: "1.3.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
@@ -14,7 +14,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: "by.bnd.mtcost",
-    versionCode: 5,
+    versionCode: 6,
     adaptiveIcon: {
       backgroundColor: "#000000",
       foregroundImage: "./assets/android-icon-foreground.png",
