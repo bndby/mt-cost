@@ -132,8 +132,7 @@ export function createHttpLesta(deps: {
       const body = await getJson("/wot/account/info/", {
         access_token: accessToken,
         account_id: String(accountId),
-        extra:
-          "private.garage,private.rented,private.is_premium,private.premium_expires_at,private.boosters",
+        extra: "private.garage,private.rented,private.boosters",
       });
       const accounts = asRecord(body.data);
       const account = asRecord(accounts?.[String(accountId)]);

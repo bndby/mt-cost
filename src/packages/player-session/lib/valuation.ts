@@ -216,14 +216,14 @@ export function valueAccount(
   pushRow(
     rows,
     "freeXp",
-    "Свободный опыт",
+    "Своб. опыт",
     freeXp,
     rublesFromGold(freeXp / rates.freeXpPerGold, rates),
   );
   pushRow(
     rows,
     "boosters",
-    "Личные резервы",
+    "Резервы",
     boosterCount,
     rublesFromGold(boosterGold, rates),
   );
@@ -237,14 +237,14 @@ export function valueAccount(
   pushRow(
     rows,
     "premium",
-    "Премиумные танки",
+    "Прем. танки",
     premiumCount,
     rublesFromGold(premiumGold, rates),
   );
   pushRow(
     rows,
     "researchable",
-    "Прокачиваемые танки",
+    "Танки",
     researchableCount,
     rublesFromGold(researchableSilver / rates.silverPerGold, rates),
   );

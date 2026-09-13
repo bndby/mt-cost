@@ -23,6 +23,50 @@ function createClient(handler: (url: URL) => Response) {
 }
 
 describe("HTTP Lesta: боны и клан-тег", () => {
+  test("account/info: лишние extra is_premium/premium_expires_at дают INVALID_EXTRA, без них — private", async () => {
+    const { client, opened } = createClient((url) => {
+      const extra = url.searchParams.get("extra") ?? "";
+      const invalid = extra
+        .split(",")
+        .filter((item) =>
+          ["private.is_premium", "private.premium_expires_at"].includes(item),
+        );
+      if (invalid.length > 0) {
+        return jsonResponse({
+          status: "error",
+          error: {
+            code: 407,
+            message: "INVALID_EXTRA",
+            field: "extra",
+            value: invalid.join(","),
+          },
+        });
+      }
+      return jsonResponse({
+        status: "ok",
+        data: {
+          "42": {
+            private: {
+              credits: 400,
+              gold: 0,
+              bonds: 0,
+              premium_expires_at: 1_700_086_400,
+              garage: [],
+            },
+          },
+        },
+      });
+    });
+
+    await expect(client.fetchAccount("token", 42)).resolves.toMatchObject({
+      silver: 400,
+      premiumExpiresAt: 1_700_086_400,
+    });
+    expect(opened[0].searchParams.get("extra")).toBe(
+      "private.garage,private.rented,private.boosters",
+    );
+  });
+
   test("account/info читает private.bonds вместе с серебром и золотом", async () => {
     const { client } = createClient(() =>
       jsonResponse({
@@ -114,7 +158,9 @@ describe("HTTP Lesta: боны и клан-тег", () => {
         { boosterId: 121001, count: 2, state: "INACTIVE" },
       ],
     });
-    expect(opened[0].searchParams.get("extra")).toContain("private.boosters");
+    expect(opened[0].searchParams.get("extra")).toBe(
+      "private.garage,private.rented,private.boosters",
+    );
 
     await expect(client.fetchBoosterPrices()).resolves.toEqual([
       {

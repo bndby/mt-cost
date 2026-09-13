@@ -216,7 +216,7 @@ describe("успешная Оценка: сумма и столбик", () => {
           { line: "silver", name: "Серебро", count: 400, amount: 0.156 },
           {
             line: "researchable",
-            name: "Прокачиваемые танки",
+            name: "Танки",
             count: 1,
             amount: 156,
           },
@@ -377,7 +377,7 @@ describe("успешная Оценка: сумма и столбик", () => {
         rows: [
           {
             line: "freeXp",
-            name: "Свободный опыт",
+            name: "Своб. опыт",
             count: 25_000,
             amount: 156,
           },
@@ -420,7 +420,7 @@ describe("успешная Оценка: сумма и столбик", () => {
         rows: [
           {
             line: "premium",
-            name: "Премиумные танки",
+            name: "Прем. танки",
             count: 1,
             amount: 1716,
           },
@@ -463,7 +463,7 @@ describe("успешная Оценка: сумма и столбик", () => {
         rows: [
           {
             line: "boosters",
-            name: "Личные резервы",
+            name: "Резервы",
             count: 3,
             amount: 62.4,
           },
@@ -521,7 +521,7 @@ describe("успешная Оценка: сумма и столбик", () => {
         heroAmount: 780,
         rows: [
           { line: "gold", name: "Золото", count: 2_500, amount: 390 },
-          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
         ],
       },
     });
@@ -612,10 +612,10 @@ describe("правила танков в Оценке", () => {
         kind: "numbers",
         heroAmount: 546,
         rows: [
-          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
           {
             line: "researchable",
-            name: "Прокачиваемые танки",
+            name: "Танки",
             count: 1,
             amount: 156,
           },
@@ -649,7 +649,7 @@ describe("правила танков в Оценке", () => {
         kind: "numbers",
         heroAmount: 390,
         rows: [
-          { line: "premium", name: "Премиумные танки", count: 1, amount: 390 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
         ],
       },
     });
@@ -1187,7 +1187,7 @@ describe("вход через WG: Оценка", () => {
         rows: [
           {
             line: "freeXp",
-            name: "Свободный опыт",
+            name: "Своб. опыт",
             count: 25_000,
             amount: 2,
           },
