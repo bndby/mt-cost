@@ -1,11 +1,22 @@
 import type { ExpoConfig } from "expo/config";
 
+function requiredApplicationId(
+  name: string,
+  value: string | undefined,
+): string {
+  const id = value?.trim() ?? "";
+  if (!id) {
+    throw new Error(`${name} is required`);
+  }
+  return id;
+}
+
 const config: ExpoConfig = {
   name: "MT Cost",
   slug: "mt-cost",
   owner: "bndby",
   scheme: "mtcost",
-  version: "1.3.0",
+  version: "1.3.1",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
@@ -14,7 +25,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: "by.bnd.mtcost",
-    versionCode: 6,
+    versionCode: 7,
     adaptiveIcon: {
       backgroundColor: "#000000",
       foregroundImage: "./assets/android-icon-foreground.png",
@@ -42,8 +53,14 @@ const config: ExpoConfig = {
     eas: {
       projectId: "ebf6a76d-6556-4ecb-93ab-f5af979ae0df",
     },
-    lestaApplicationId: process.env.LESTA_APPLICATION_ID ?? "",
-    wgApplicationId: process.env.WG_APPLICATION_ID ?? "",
+    lestaApplicationId: requiredApplicationId(
+      "LESTA_APPLICATION_ID",
+      process.env.LESTA_APPLICATION_ID,
+    ),
+    wgApplicationId: requiredApplicationId(
+      "WG_APPLICATION_ID",
+      process.env.WG_APPLICATION_ID,
+    ),
     silverPerGold: process.env.SILVER_PER_GOLD ?? "400",
     goldPackGold: process.env.GOLD_PACK_GOLD ?? "50000",
     goldPackRubles: process.env.GOLD_PACK_RUBLES ?? "7800",

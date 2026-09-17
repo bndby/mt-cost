@@ -4,6 +4,7 @@ import { AppState } from "react-native";
 import { createExpoCustomTab } from "./src/adapters/expo-custom-tab";
 import { createHttpLesta } from "./src/adapters/lesta-http";
 import { systemClock } from "./src/adapters/system-clock";
+import { requiredApplicationId } from "./src/config/application-ids";
 import {
   WG_API_ORIGINS,
   createPlayerSession,
@@ -21,10 +22,14 @@ function snapshotNumber(value: unknown): number {
   return n;
 }
 
-const applicationId =
-  (extra.lestaApplicationId as string | undefined) ?? "";
-const wgApplicationId =
-  (extra.wgApplicationId as string | undefined) ?? "";
+const applicationId = requiredApplicationId(
+  "LESTA_APPLICATION_ID",
+  extra.lestaApplicationId as string | undefined,
+);
+const wgApplicationId = requiredApplicationId(
+  "WG_APPLICATION_ID",
+  extra.wgApplicationId as string | undefined,
+);
 
 export default function App() {
   const session = useMemo(

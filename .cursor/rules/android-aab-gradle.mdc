@@ -1,0 +1,16 @@
+---
+description: Play AAB собирается локально Gradle, не EAS Docker.
+alwaysApply: true
+---
+
+# Android AAB
+
+Релизный App Bundle — **локальный Gradle на хосте**, не `eas build --local` и не облачный EAS (нужен Docker / чужой воркер).
+
+Команда: `npm run build:android` → `scripts/build-android-aab.sh`.
+
+Скрипт: `.env`, `expo prebuild -p android`, Play upload keystore из `credentials.json` (не debug.keystore), патч `signingConfigs.release` в сгенерированном `build.gradle`, `./gradlew :app:bundleRelease`, копия в `mt-cost-<version>.aab`.
+
+После сборки SHA1 сертификата AAB должен быть `EE:13:1B:7D:1F:B4:1F:88:4A:C9:38:D9:A9:D4:5D:CA:40:FC:A4:BF`. Отпечаток debug.keystore (`5E:8F:16:06:…`) Play отклоняет.
+
+`android/` генерируется и в git не входит. Не коммитить `credentials.json`, `*.jks`, `*.aab`. Отправка в Play по-прежнему `npm run submit:android`.

@@ -11,3 +11,7 @@ Canonical roles map 1:1 to tracker labels: `needs-triage`, `needs-info`, `ready-
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Android AAB
+
+Play App Bundle is a host Gradle build (`npm run build:android`), not EAS Docker. Rule: `.cursor/rules/android-aab-gradle.mdc`.
