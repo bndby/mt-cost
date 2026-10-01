@@ -1,20 +1,18 @@
 import { describe, expect, test } from "vitest";
 import {
-  LESTA_API_ORIGIN,
   OPEN_ID_REDIRECT_URI,
   WG_API_ORIGINS,
 } from "../index";
 import {
   APPLICATION_ID,
   SIGNED_OUT_SCREEN,
-  WG_APPLICATION_ID,
   createHarness,
   errorCallback,
   okCallback,
   waitForScreen,
 } from "./harness";
 
-describe("не вошёл и Lesta OpenID", () => {
+describe("не вошёл", () => {
   test("первый запуск показывает «не вошёл» и не открывает Custom Tab", () => {
     const { session, customTab } = createHarness();
 
@@ -22,46 +20,40 @@ describe("не вошёл и Lesta OpenID", () => {
     expect(customTab.opened).toEqual([]);
   });
 
-  test("нажатие входа открывает Custom Tab с HTTPS redirect_uri заглушки", async () => {
+  test("нажатие входа открывает шаг Реалма и не открывает Custom Tab", async () => {
     const { session, customTab } = createHarness();
 
-    await session.signIn();
+    session.signIn();
 
-    expect(customTab.opened).toHaveLength(1);
-    const opened = new URL(customTab.opened[0]);
-    expect(opened.origin + opened.pathname).toBe(
-      `${LESTA_API_ORIGIN}/wot/auth/login/`,
-    );
-    expect(opened.searchParams.get("application_id")).toBe(APPLICATION_ID);
-    expect(opened.searchParams.get("redirect_uri")).toBe(OPEN_ID_REDIRECT_URI);
-    expect(opened.searchParams.get("display")).toBe("page");
-    expect(opened.searchParams.get("redirect_uri")).not.toContain("mtcost://");
+    expect(session.screen().kind).toBe("choose-realm");
+    expect(customTab.opened).toEqual([]);
   });
 
   test("успешный callback с access_token показывает Оценку со слотами «ждём» и «Выйти»", async () => {
-    const { session, customTab, lesta } = createHarness();
+    const { session, customTab, wg } = createHarness();
     let release!: () => void;
-    lesta.accountGate = new Promise((resolve) => {
+    wg.accountGate = new Promise((resolve) => {
       release = resolve;
     });
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
 
     expect(session.screen()).toMatchObject({
       kind: "valuation",
       signOutLabel: "Выйти",
-      kicker: "Player",
+      kicker: "[EU] Player",
       retryLabel: null,
       snapshot: { kind: "waiting" },
     });
     expect(JSON.stringify(session.screen())).not.toMatch(
-      /Оценка|MT Cost|рос\. рубль|бел\. рубль|доллар/,
+      /Оценка|WoT Cost|рос\. рубль|бел\. рубль/,
     );
     release();
   });
 
-  test("срыв входа оставляет «не вошёл» без кодов Lesta и без чисел", async () => {
+  test("срыв входа оставляет шаг Реалма без кодов и без чисел", async () => {
     const cases = [
       { type: "dismiss" as const },
       { type: "success" as const, url: errorCallback("AUTH_CANCEL") },
@@ -72,25 +64,28 @@ describe("не вошёл и Lesta OpenID", () => {
     for (const nextResult of cases) {
       const { session, customTab } = createHarness();
       customTab.nextResult = nextResult;
-      await session.signIn();
+      session.signIn();
+    await session.chooseRealm("EU");
       const shown = session.screen();
-      expect(shown).toEqual(SIGNED_OUT_SCREEN);
-      expect(JSON.stringify(shown)).not.toMatch(/AUTH_|access_token|code/);
+      expect(shown.kind).toBe("choose-realm");
+      expect(JSON.stringify(shown)).not.toMatch(/AUTH_|access_token/);
     }
   });
 
   test("«Выйти» при живом токене возвращает «не вошёл» и забывает токен", async () => {
-    const { session, customTab, lesta } = createHarness();
+    const { session, customTab, wg } = createHarness();
     customTab.succeedWith(okCallback({ accessToken: "live-token" }));
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     expect(session.screen().kind).toBe("valuation");
 
     await session.signOut();
 
     expect(session.screen().kind).toBe("signed-out");
-    expect(lesta.logoutCalls).toEqual(["live-token"]);
+    expect(wg.logoutCalls).toEqual(["live-token"]);
     customTab.opened = [];
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     expect(customTab.opened).toHaveLength(1);
   });
 });
@@ -98,7 +93,7 @@ describe("не вошёл и Lesta OpenID", () => {
 describe("вход через WG: шаг выбора Реалма", () => {
   const CHOOSE_REALM = {
     kind: "choose-realm" as const,
-    kicker: "Войти через WG",
+    kicker: "Войти",
     title: "Выберите Реалм",
     backLabel: "Назад",
     realms: [
@@ -111,7 +106,7 @@ describe("вход через WG: шаг выбора Реалма", () => {
   test("«Войти через WG» показывает шаг выбора Реалма и не открывает Custom Tab", () => {
     const { session, customTab } = createHarness();
 
-    session.startWgSignIn();
+    session.signIn();
 
     expect(session.screen()).toEqual(CHOOSE_REALM);
     expect(customTab.opened).toEqual([]);
@@ -119,7 +114,7 @@ describe("вход через WG: шаг выбора Реалма", () => {
 
   test("«Назад» с шага Реалма возвращает «не вошёл» и сбрасывает выбор", () => {
     const { session, customTab } = createHarness();
-    session.startWgSignIn();
+    session.signIn();
 
     session.backFromRealm();
 
@@ -129,7 +124,7 @@ describe("вход через WG: шаг выбора Реалма", () => {
 
   test("выбор Реалма открывает WG OpenID на хосте Реалма", async () => {
     const { session, customTab } = createHarness();
-    session.startWgSignIn();
+    session.signIn();
 
     await session.chooseRealm("EU");
 
@@ -138,15 +133,15 @@ describe("вход через WG: шаг выбора Реалма", () => {
     expect(opened.origin + opened.pathname).toBe(
       `${WG_API_ORIGINS.EU}/wot/auth/login/`,
     );
-    expect(opened.searchParams.get("application_id")).toBe(WG_APPLICATION_ID);
+    expect(opened.searchParams.get("application_id")).toBe(APPLICATION_ID);
     expect(opened.searchParams.get("redirect_uri")).toBe(OPEN_ID_REDIRECT_URI);
     expect(opened.searchParams.get("display")).toBe("page");
-    expect(opened.searchParams.get("application_id")).not.toBe(APPLICATION_ID);
+    expect(opened.searchParams.get("redirect_uri")).not.toContain("mtcost://");
   });
 
   test("отмена Custom Tab после выбора Реалма оставляет шаг с сохранённым выбором", async () => {
     const { session, customTab } = createHarness();
-    session.startWgSignIn();
+    session.signIn();
     await session.chooseRealm("NA");
 
     expect(session.screen()).toEqual({
@@ -162,36 +157,37 @@ describe("вход через WG: шаг выбора Реалма", () => {
 
   test("«Назад» после отмены на странице WG сбрасывает выбор полностью", async () => {
     const { session } = createHarness();
-    session.startWgSignIn();
+    session.signIn();
     await session.chooseRealm("ASIA");
 
     session.backFromRealm();
-    session.startWgSignIn();
+    session.signIn();
 
     expect(session.screen()).toEqual(CHOOSE_REALM);
   });
 });
 
 describe("успешная Оценка: сумма и столбик", () => {
-  test("после входа снимок сначала «ждём», затем сумма и строки по курсам 400 и 0,156", async () => {
-    const { session, customTab, lesta } = createHarness();
+  test("после входа снимок сначала «ждём», затем сумма и строки по курсу серебра и пакету золота", async () => {
+    const { session, customTab, wg } = createHarness();
     let release!: () => void;
-    lesta.accountGate = new Promise((resolve) => {
+    wg.accountGate = new Promise((resolve) => {
       release = resolve;
     });
-    lesta.account = {
+    wg.account = {
       silver: 400,
       gold: 50_000,
       bonds: 0,
       hangarTankIds: [11],
       rented: [],
     };
-    lesta.vehicles = [
+    wg.vehicles = [
       { tankId: 11, priceSilver: 400_000, priceGold: null },
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     expect(session.screen()).toMatchObject({
       kind: "valuation",
       snapshot: { kind: "waiting" },
@@ -205,35 +201,31 @@ describe("успешная Оценка: сумма и столбик", () => {
 
     expect(screen).toMatchObject({
       kind: "valuation",
-      kicker: "Player",
+      kicker: "[EU] Player",
       signOutLabel: "Выйти",
       retryLabel: "Повторить",
+      symbol: "€",
       snapshot: {
         kind: "numbers",
-        heroAmount: 7956.156,
+        heroAmount: 102.002,
         rows: [
-          { line: "gold", name: "Золото", count: 50_000, amount: 7800 },
-          { line: "silver", name: "Серебро", count: 400, amount: 0.156 },
+          { line: "gold", name: "Золото", count: 50_000, amount: 100 },
+          { line: "silver", name: "Серебро", count: 400, amount: 0.002 },
           {
             line: "researchable",
             name: "Танки",
             count: 1,
-            amount: 156,
+            amount: 2,
           },
-        ],
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: true },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-          { label: "доллар", symbol: "$", selected: false },
         ],
       },
     });
     expect(JSON.stringify(screen)).not.toContain("Прочее имущество");
   });
 
-  test("пустой аккаунт — успех с 0,00 ₽ без строк, не прочерки", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+  test("пустой аккаунт — успех с 0,00 без строк, не прочерки", async () => {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -242,7 +234,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -259,8 +252,8 @@ describe("успешная Оценка: сумма и столбик", () => {
   });
 
   test("боны входят в сумму по снимку 1 бон = 1,6 золота", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 10,
@@ -269,7 +262,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -278,15 +272,15 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 2.496,
-        rows: [{ line: "bonds", name: "Боны", count: 10, amount: 2.496 }],
+        heroAmount: 0.032,
+        rows: [{ line: "bonds", name: "Боны", count: 10, amount: 0.032 }],
       },
     });
   });
 
   test("ТПА считает дни вверх, раскладывает их по пакетам и входит в общую сумму", async () => {
-    const { session, customTab, lesta, clock } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg, clock } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -296,7 +290,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -305,22 +300,22 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 296.4,
+        heroAmount: 3.8,
         rows: [
           {
             line: "premiumAccount",
             name: "Прем. акк",
             count: 10,
-            amount: 296.4,
+            amount: 3.8,
           },
         ],
       },
     });
   });
 
-  test("ТПА Мира танков на 360 дней раскладывается пакетами 30 дней, не пакетом WG", async () => {
-    const { session, customTab, lesta, clock } = createHarness();
-    lesta.account = {
+  test("ТПА на 360 дней раскладывается пакетом 20 500 золота", async () => {
+    const { session, customTab, wg, clock } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -330,7 +325,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -339,22 +335,22 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 4680,
+        heroAmount: 41,
         rows: [
           {
             line: "premiumAccount",
             name: "Прем. акк",
             count: 360,
-            amount: 4680,
+            amount: 41,
           },
         ],
       },
     });
   });
 
-  test("свободный опыт Мира танков — строка по 25 XP за золото", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+  test("свободный опыт идёт в столбик по курсу 25 XP за золото", async () => {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -364,7 +360,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -373,29 +370,29 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 156,
+        heroAmount: 2,
         rows: [
           {
             line: "freeXp",
             name: "Своб. опыт",
             count: 25_000,
-            amount: 156,
+            amount: 2,
           },
         ],
       },
     });
   });
 
-  test("наградной танк без каталога берёт техническую стоимость уровня", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+  test("наградной танк без каталожной цены не входит в Оценку", async () => {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
       hangarTankIds: [8],
       rented: [],
     };
-    lesta.vehicles = [
+    wg.vehicles = [
       {
         tankId: 8,
         priceSilver: 0,
@@ -407,7 +404,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -416,22 +414,15 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 1716,
-        rows: [
-          {
-            line: "premium",
-            name: "Прем. танки",
-            count: 1,
-            amount: 1716,
-          },
-        ],
+        heroAmount: 0,
+        rows: [],
       },
     });
   });
 
   test("личные резервы: витрина золота, USED выкинут, не словарь — без строки", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -443,14 +434,15 @@ describe("успешная Оценка: сумма и столбик", () => {
         { boosterId: 9, count: 4, state: "USED" },
       ],
     };
-    lesta.boosterPrices = [
+    wg.boosterPrices = [
       { boosterId: 121001, priceGold: 150 },
       { boosterId: 121000, priceGold: 100 },
       { boosterId: 9, priceGold: 50 },
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -459,13 +451,13 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 62.4,
+        heroAmount: 0.8,
         rows: [
           {
             line: "boosters",
             name: "Резервы",
             count: 3,
-            amount: 62.4,
+            amount: 0.8,
           },
         ],
       },
@@ -473,8 +465,8 @@ describe("успешная Оценка: сумма и столбик", () => {
   });
 
   test("истёкший ТПА не показывается и не входит в сумму", async () => {
-    const { session, customTab, lesta, clock } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg, clock } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -484,7 +476,8 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -496,20 +489,21 @@ describe("успешная Оценка: сумма и столбик", () => {
   });
 
   test("нулевой баланс валюты и пустая корзина схлопываются; порядок живых строк стабилен", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 2_500,
       bonds: 0,
       hangarTankIds: [1],
       rented: [],
     };
-    lesta.vehicles = [
+    wg.vehicles = [
       { tankId: 1, priceSilver: null, priceGold: 2_500 },
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -518,10 +512,10 @@ describe("успешная Оценка: сумма и столбик", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 780,
+        heroAmount: 10,
         rows: [
-          { line: "gold", name: "Золото", count: 2_500, amount: 390 },
-          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
+          { line: "gold", name: "Золото", count: 2_500, amount: 5 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 5 },
         ],
       },
     });
@@ -534,7 +528,8 @@ describe("мёртвый токен без устаревшей Оценки", (
     customTab.succeedWith(
       okCallback({ expiresAt: clock.nowUnixSeconds + 60 }),
     );
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -546,8 +541,8 @@ describe("мёртвый токен без устаревшей Оценки", (
   });
 
   test("истёкший токен без продления — «не вошёл» без кодов, чисел и автооткрытия Custom Tab", async () => {
-    const { session, customTab, clock, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, clock, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 50_000,
       bonds: 0,
@@ -560,31 +555,32 @@ describe("мёртвый токен без устаревшей Оценки", (
         expiresAt: clock.nowUnixSeconds + 10,
       }),
     );
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
       (s) =>
         s.kind === "valuation" &&
         s.snapshot.kind === "numbers" &&
-        s.snapshot.heroAmount === 7800,
+        s.snapshot.heroAmount === 100,
     );
 
     clock.set(clock.nowUnixSeconds + 11);
-    lesta.prolongateResult = "failed";
+    wg.prolongateResult = "failed";
     customTab.opened = [];
 
     await session.onForeground();
 
     expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
-    expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|7800/);
+    expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|access_token/);
     expect(customTab.opened).toEqual([]);
   });
 });
 
 describe("правила танков в Оценке", () => {
   test("уникальный tank_id включая аренду; без официальной цены нет в столбике и сумме; компенсация не в сумме", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
@@ -594,13 +590,14 @@ describe("правила танков в Оценке", () => {
         { tankId: 1, compensationSilver: 50, compensationGold: 0 },
       ],
     };
-    lesta.vehicles = [
+    wg.vehicles = [
       { tankId: 1, priceSilver: 400_000, priceGold: null },
       { tankId: 2, priceSilver: null, priceGold: 2_500 },
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -610,14 +607,14 @@ describe("правила танков в Оценке", () => {
       kind: "valuation",
       snapshot: {
         kind: "numbers",
-        heroAmount: 546,
+        heroAmount: 7,
         rows: [
-          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 5 },
           {
             line: "researchable",
             name: "Танки",
             count: 1,
-            amount: 156,
+            amount: 2,
           },
         ],
       },
@@ -625,20 +622,21 @@ describe("правила танков в Оценке", () => {
   });
 
   test("оба ненулевых поля цены — золото, суммы двух витрин нет", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
       hangarTankIds: [7],
       rented: [],
     };
-    lesta.vehicles = [
+    wg.vehicles = [
       { tankId: 7, priceSilver: 400_000, priceGold: 2_500 },
     ];
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
@@ -647,9 +645,9 @@ describe("правила танков в Оценке", () => {
     expect(screen).toMatchObject({
       snapshot: {
         kind: "numbers",
-        heroAmount: 390,
+        heroAmount: 5,
         rows: [
-          { line: "premium", name: "Прем. танки", count: 1, amount: 390 },
+          { line: "premium", name: "Прем. танки", count: 1, amount: 5 },
         ],
       },
     });
@@ -658,11 +656,12 @@ describe("правила танков в Оценке", () => {
 
 describe("сбой сбора и повтор", () => {
   test("сбой при живом токене оставляет Оценку с прочерками и «Повторить»", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = new Error("ECONNRESET");
+    const { session, customTab, wg } = createHarness();
+    wg.account = new Error("ECONNRESET");
     customTab.succeedWith(okCallback());
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "dashes",
@@ -678,29 +677,30 @@ describe("сбой сбора и повтор", () => {
       kind: "dashes",
     });
     expect(JSON.stringify(screen)).not.toMatch(
-      /AUTH_|ECONNRESET|code|рос\. рубль|бел\. рубль|доллар/,
+      /AUTH_|ECONNRESET|code|рос\. рубль|бел\. рубль/,
     );
   });
 
   test("«Повторить» сразу ставит все слоты в «ждём», затем числа или прочерки", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = new Error("fail");
+    const { session, customTab, wg } = createHarness();
+    wg.account = new Error("fail");
     customTab.succeedWith(okCallback());
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "dashes",
     );
 
     let release!: () => void;
-    lesta.account = {
+    wg.account = {
       silver: 0,
       gold: 50_000,
       bonds: 0,
       hangarTankIds: [],
       rented: [],
     };
-    lesta.accountGate = new Promise((resolve) => {
+    wg.accountGate = new Promise((resolve) => {
       release = resolve;
     });
 
@@ -719,14 +719,14 @@ describe("сбой сбора и повтор", () => {
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
     expect(screen).toMatchObject({
-      snapshot: { kind: "numbers", heroAmount: 7800 },
+      snapshot: { kind: "numbers", heroAmount: 100 },
       retryLabel: "Повторить",
     });
   });
 
   test("из успеха повтор только явным «Повторить»; onForeground сбор не запускает", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 50_000,
       bonds: 0,
@@ -734,13 +734,14 @@ describe("сбой сбора и повтор", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
 
-    lesta.account = {
+    wg.account = {
       silver: 0,
       gold: 2_500,
       bonds: 0,
@@ -749,7 +750,7 @@ describe("сбой сбора и повтор", () => {
     };
     await session.onForeground();
     expect(session.screen()).toMatchObject({
-      snapshot: { kind: "numbers", heroAmount: 7800 },
+      snapshot: { kind: "numbers", heroAmount: 100 },
     });
 
     await session.retry();
@@ -759,16 +760,16 @@ describe("сбой сбора и повтор", () => {
         s.kind === "valuation" &&
         s.snapshot.kind === "numbers" &&
         s.snapshot.kind === "numbers" &&
-        s.snapshot.heroAmount === 390,
+        s.snapshot.heroAmount === 5,
     );
     expect(screen).toMatchObject({
-      snapshot: { kind: "numbers", heroAmount: 390 },
+      snapshot: { kind: "numbers", heroAmount: 5 },
     });
   });
 
   test("неудачный повтор стирает предыдущие числа", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 50_000,
       bonds: 0,
@@ -776,13 +777,14 @@ describe("сбой сбора и повтор", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
 
-    lesta.account = new Error("fail");
+    wg.account = new Error("fail");
     await session.retry();
     const screen = await waitForScreen(
       session,
@@ -792,21 +794,22 @@ describe("сбой сбора и повтор", () => {
       snapshot: { kind: "dashes" },
       retryLabel: "Повторить",
     });
-    expect(JSON.stringify(screen)).not.toContain("7800");
+    expect(JSON.stringify(screen)).not.toContain("live-token");
   });
 
   test("ошибка энциклопедии при живом токене — те же прочерки, не «не вошёл»", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
       silver: 0,
       gold: 0,
       bonds: 0,
       hangarTankIds: [1],
       rented: [],
     };
-    lesta.vehicles = new Error("vehicles");
+    wg.vehicles = new Error("vehicles");
     customTab.succeedWith(okCallback());
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "dashes",
@@ -821,101 +824,106 @@ describe("сбой сбора и повтор", () => {
 
 describe("кикер: ник и клан-тег", () => {
   test("успешный вход сразу ставит ник над суммой, без «Оценка» и без капса", async () => {
-    const { session, customTab, lesta } = createHarness();
+    const { session, customTab, wg } = createHarness();
     let release!: () => void;
-    lesta.accountGate = new Promise((resolve) => {
+    wg.accountGate = new Promise((resolve) => {
       release = resolve;
     });
     customTab.succeedWith(okCallback({ nickname: "pLaYeR" }));
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
 
     expect(session.screen()).toMatchObject({
       kind: "valuation",
-      kicker: "pLaYeR",
+      kicker: "[EU] pLaYeR",
       snapshot: { kind: "waiting" },
     });
-    expect(JSON.stringify(session.screen())).not.toMatch(/Оценка|MT Cost|PLAYER/);
+    expect(JSON.stringify(session.screen())).not.toMatch(/Оценка|WoT Cost|PLAYER/);
     release();
   });
 
   test("подтверждённый клан: кикер «[тег] ник» в том регистре, что пришёл", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.clan = "xYz";
+    const { session, customTab, wg } = createHarness();
+    wg.clan = "xYz";
     customTab.succeedWith(okCallback({ nickname: "pLaYeR" }));
 
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
-      (s) => s.kind === "valuation" && s.kicker === "[xYz] pLaYeR",
+      (s) => s.kind === "valuation" && s.kicker === "[EU] [xYz] pLaYeR",
     );
 
     expect(screen).toMatchObject({
       kind: "valuation",
-      kicker: "[xYz] pLaYeR",
+      kicker: "[EU] [xYz] pLaYeR",
     });
   });
 
   test("нет клана, ожидание и сбой запроса — только ник, без прочерка тега", async () => {
     const waiting = createHarness();
     let releaseClan!: () => void;
-    waiting.lesta.clan = "TAG";
-    waiting.lesta.clanGate = new Promise((resolve) => {
+    waiting.wg.clan = "TAG";
+    waiting.wg.clanGate = new Promise((resolve) => {
       releaseClan = resolve;
     });
     waiting.customTab.succeedWith(okCallback({ nickname: "Nick" }));
-    await waiting.session.signIn();
+    waiting.session.signIn();
+    await waiting.session.chooseRealm("EU");
     expect(waiting.session.screen()).toMatchObject({
       kind: "valuation",
-      kicker: "Nick",
+      kicker: "[EU] Nick",
     });
     const waitingShown = waiting.session.screen();
     if (waitingShown.kind === "valuation") {
-      expect(waitingShown.kicker).not.toMatch(/\[|—|TAG/);
+      expect(waitingShown.kicker).toBe("[EU] Nick");
     }
     releaseClan();
     await waitForScreen(
       waiting.session,
-      (s) => s.kind === "valuation" && s.kicker === "[TAG] Nick",
+      (s) => s.kind === "valuation" && s.kicker === "[EU] [TAG] Nick",
     );
 
     const notInClan = createHarness();
-    notInClan.lesta.clan = null;
+    notInClan.wg.clan = null;
     notInClan.customTab.succeedWith(okCallback({ nickname: "Solo" }));
-    await notInClan.session.signIn();
+    notInClan.session.signIn();
+    await notInClan.session.chooseRealm("EU");
     await waitForScreen(
       notInClan.session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
-    expect(notInClan.session.screen()).toMatchObject({ kicker: "Solo" });
+    expect(notInClan.session.screen()).toMatchObject({ kicker: "[EU] Solo" });
     const notInClanShown = notInClan.session.screen();
     if (notInClanShown.kind === "valuation") {
-      expect(notInClanShown.kicker).not.toMatch(/\[|—/);
+      expect(notInClanShown.kicker).toBe("[EU] Solo");
     }
 
     const failed = createHarness();
-    failed.lesta.clan = new Error("clan");
+    failed.wg.clan = new Error("clan");
     failed.customTab.succeedWith(okCallback({ nickname: "Solo" }));
-    await failed.session.signIn();
+    failed.session.signIn();
+    await failed.session.chooseRealm("EU");
     await waitForScreen(
       failed.session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
     expect(failed.session.screen()).toMatchObject({
       kind: "valuation",
-      kicker: "Solo",
+      kicker: "[EU] Solo",
       snapshot: { kind: "numbers" },
     });
     const failedShown = failed.session.screen();
     if (failedShown.kind === "valuation") {
-      expect(failedShown.kicker).not.toMatch(/\[|—/);
+      expect(failedShown.kicker).toBe("[EU] Solo");
     }
   });
 
   test("сбой клана не превращает успешную Оценку в прочерки", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.clan = new Error("clan");
-    lesta.account = {
+    const { session, customTab, wg } = createHarness();
+    wg.clan = new Error("clan");
+    wg.account = {
       silver: 0,
       gold: 50_000,
       bonds: 0,
@@ -923,202 +931,39 @@ describe("кикер: ник и клан-тег", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
     expect(screen).toMatchObject({
       kind: "valuation",
-      kicker: "Player",
-      snapshot: { kind: "numbers", heroAmount: 7800 },
+      kicker: "[EU] Player",
+      snapshot: { kind: "numbers", heroAmount: 100 },
     });
   });
 
   test("повтор Оценки не сбрасывает известный кикер и не запрашивает клан снова", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.clan = "RED";
+    const { session, customTab, wg } = createHarness();
+    wg.clan = "RED";
     customTab.succeedWith(okCallback({ nickname: "Ace" }));
-    await session.signIn();
+    session.signIn();
+    await session.chooseRealm("EU");
     await waitForScreen(
       session,
-      (s) => s.kind === "valuation" && s.kicker === "[RED] Ace",
+      (s) => s.kind === "valuation" && s.kicker === "[EU] [RED] Ace",
     );
-    expect(lesta.clanCalls).toBe(1);
+    expect(wg.clanCalls).toBe(1);
 
-    lesta.clan = "BLUE";
+    wg.clan = "BLUE";
     await session.retry();
     const screen = await waitForScreen(
       session,
       (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
     );
-    expect(screen).toMatchObject({ kicker: "[RED] Ace" });
-    expect(lesta.clanCalls).toBe(1);
-  });
-});
-
-describe("переключатель валюты показа", () => {
-  test("после входа выбран «рос. рубль»; бел. рубль и доллар делят рубли на 28,1618 и 85,6007", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
-      silver: 0,
-      gold: 50_000,
-      bonds: 0,
-      hangarTankIds: [],
-      rented: [],
-    };
-    customTab.succeedWith(okCallback());
-    await session.signIn();
-    const rub = await waitForScreen(
-      session,
-      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
-    );
-    expect(rub).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 7800,
-        rows: [
-          { line: "gold", name: "Золото", count: 50_000, amount: 7800 },
-        ],
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: true },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-          { label: "доллар", symbol: "$", selected: false },
-        ],
-      },
-    });
-
-    session.chooseDisplayCurrency("бел. рубль");
-    expect(session.screen()).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 276.9709322557507,
-        rows: [
-          {
-            line: "gold",
-            name: "Золото",
-            count: 50_000,
-            amount: 276.9709322557507,
-          },
-        ],
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: false },
-          { label: "бел. рубль", symbol: "Br", selected: true },
-          { label: "доллар", symbol: "$", selected: false },
-        ],
-      },
-    });
-
-    session.chooseDisplayCurrency("доллар");
-    expect(session.screen()).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 91.12075018078123,
-        rows: [
-          {
-            line: "gold",
-            name: "Золото",
-            count: 50_000,
-            amount: 91.12075018078123,
-          },
-        ],
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: false },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-          { label: "доллар", symbol: "$", selected: true },
-        ],
-      },
-    });
-  });
-
-  test("выбор валюты показа переживает «Повторить»", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
-      silver: 0,
-      gold: 50_000,
-      bonds: 0,
-      hangarTankIds: [],
-      rented: [],
-    };
-    customTab.succeedWith(okCallback());
-    await session.signIn();
-    await waitForScreen(
-      session,
-      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
-    );
-    session.chooseDisplayCurrency("бел. рубль");
-
-    lesta.account = {
-      silver: 0,
-      gold: 2_500,
-      bonds: 0,
-      hangarTankIds: [],
-      rented: [],
-    };
-    await session.retry();
-    const screen = await waitForScreen(
-      session,
-      (s) =>
-        s.kind === "valuation" &&
-        s.snapshot.kind === "numbers" &&
-        s.snapshot.heroAmount === 13.848546612787535,
-    );
-    expect(screen).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 13.848546612787535,
-        rows: [
-          {
-            line: "gold",
-            name: "Золото",
-            count: 2_500,
-            amount: 13.848546612787535,
-          },
-        ],
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: false },
-          { label: "бел. рубль", symbol: "Br", selected: true },
-          { label: "доллар", symbol: "$", selected: false },
-        ],
-      },
-    });
-  });
-
-  test("выход и новый вход возвращают «рос. рубль»", async () => {
-    const { session, customTab, lesta } = createHarness();
-    lesta.account = {
-      silver: 0,
-      gold: 50_000,
-      bonds: 0,
-      hangarTankIds: [],
-      rented: [],
-    };
-    customTab.succeedWith(okCallback());
-    await session.signIn();
-    await waitForScreen(
-      session,
-      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
-    );
-    session.chooseDisplayCurrency("доллар");
-    await session.signOut();
-
-    customTab.succeedWith(okCallback());
-    await session.signIn();
-    const screen = await waitForScreen(
-      session,
-      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
-    );
-    expect(screen).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 7800,
-        chips: [
-          { label: "рос. рубль", symbol: "₽", selected: true },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-          { label: "доллар", symbol: "$", selected: false },
-        ],
-      },
-    });
+    expect(screen).toMatchObject({ kicker: "[EU] [RED] Ace" });
+    expect(wg.clanCalls).toBe(1);
   });
 });
 
@@ -1128,7 +973,7 @@ describe("вход через WG: Оценка", () => {
     realm: "NA" | "EU" | "ASIA" = "EU",
   ) {
     harness.customTab.succeedWith(okCallback());
-    harness.session.startWgSignIn();
+    harness.session.signIn();
     await harness.session.chooseRealm(realm);
   }
 
@@ -1150,18 +995,14 @@ describe("вход через WG: Оценка", () => {
     expect(screen).toMatchObject({
       kind: "valuation",
       kicker: "[EU] Player",
+      symbol: "€",
       snapshot: {
         kind: "numbers",
         heroAmount: 100,
         rows: [{ name: "Золото", count: 50_000, amount: 100 }],
-        chips: [
-          { label: "доллар", symbol: "$", selected: true },
-          { label: "рос. рубль", symbol: "₽", selected: false },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-        ],
       },
     });
-    expect(harness.lesta.logoutCalls).toEqual([]);
+    expect(harness.wg.logoutCalls).toEqual([]);
     expect(harness.wgRealms).toEqual(["EU"]);
   });
 
@@ -1196,7 +1037,7 @@ describe("вход через WG: Оценка", () => {
     });
   });
 
-  test("WG-ТПА 360 дней раскладывается пакетом 20 500 золота, не таблицей Lesta", async () => {
+  test("ТПА 360 дней раскладывается пакетом 20 500 золота", async () => {
     const harness = createHarness();
     harness.wg.account = {
       silver: 0,
@@ -1227,7 +1068,7 @@ describe("вход через WG: Оценка", () => {
     });
   });
 
-  test("наградной танк WG без каталога не берёт таблицу уровней Lesta", async () => {
+  test("наградной танк без каталога не входит в Оценку", async () => {
     const harness = createHarness();
     harness.wg.account = {
       silver: 0,
@@ -1279,53 +1120,23 @@ describe("вход через WG: Оценка", () => {
     });
   });
 
-  test("в WG-сессии «рос. рубль» переводит доллары пакета через RUB_PER_USD", async () => {
-    const harness = createHarness();
-    harness.wg.account = {
-      silver: 0,
-      gold: 50_000,
-      bonds: 0,
-      hangarTankIds: [],
-      rented: [],
-    };
-    await signInWg(harness);
-    await waitForScreen(
-      harness.session,
-      (s) => s.kind === "valuation" && s.snapshot.kind === "numbers",
-    );
-    harness.session.chooseDisplayCurrency("рос. рубль");
-
-    expect(harness.session.screen()).toMatchObject({
-      snapshot: {
-        kind: "numbers",
-        heroAmount: 8560.07,
-        rows: [{ name: "Золото", count: 50_000, amount: 8560.07 }],
-        chips: [
-          { label: "доллар", symbol: "$", selected: false },
-          { label: "рос. рубль", symbol: "₽", selected: true },
-          { label: "бел. рубль", symbol: "Br", selected: false },
-        ],
-      },
-    });
-  });
-
   test("кикер WG — Реалм первым, затем клан-тег и ник", async () => {
     const harness = createHarness();
     harness.wg.clan = "RED";
     harness.customTab.succeedWith(okCallback({ nickname: "Ace" }));
-    harness.session.startWgSignIn();
+    harness.session.signIn();
     await harness.session.chooseRealm("NA");
     const screen = await waitForScreen(
       harness.session,
       (s) => s.kind === "valuation" && s.kicker === "[NA] [RED] Ace",
     );
-    expect(screen).toMatchObject({ kicker: "[NA] [RED] Ace" });
+    expect(screen).toMatchObject({ kicker: "[NA] [RED] Ace", symbol: "$" });
   });
 
-  test("«Выйти» после WG вызывает logout WG-клиента, не Lesta", async () => {
+  test("«Выйти» вызывает logout клиента Реалма", async () => {
     const harness = createHarness();
     harness.customTab.succeedWith(okCallback({ accessToken: "wg-token" }));
-    harness.session.startWgSignIn();
+    harness.session.signIn();
     await harness.session.chooseRealm("ASIA");
     await waitForScreen(harness.session, (s) => s.kind === "valuation");
 
@@ -1333,12 +1144,11 @@ describe("вход через WG: Оценка", () => {
 
     expect(harness.session.screen()).toEqual(SIGNED_OUT_SCREEN);
     expect(harness.wg.logoutCalls).toEqual(["wg-token"]);
-    expect(harness.lesta.logoutCalls).toEqual([]);
   });
 
   test("срыв WG OpenID (AUTH_*) оставляет шаг Реалма без кодов", async () => {
     const { session, customTab } = createHarness();
-    session.startWgSignIn();
+    session.signIn();
     customTab.nextResult = {
       type: "success",
       url: errorCallback("AUTH_CANCEL"),

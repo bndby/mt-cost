@@ -1,5 +1,4 @@
 import {
-  LESTA_PREMIUM_PACKAGES,
   WG_PREMIUM_PACKAGES,
   uniqueTankIds,
   valueAccount,
@@ -8,7 +7,6 @@ import {
 export const OPEN_ID_REDIRECT_URI =
   "https://bndby.github.io/mt-cost/auth/callback";
 export const CUSTOM_SCHEME_CALLBACK = "mtcost://auth/callback";
-export const LESTA_API_ORIGIN = "https://api.tanki.su";
 export const WG_API_ORIGINS = {
   NA: "https://api.worldoftanks.com",
   EU: "https://api.worldoftanks.eu",
@@ -17,10 +15,10 @@ export const WG_API_ORIGINS = {
 export type Realm = keyof typeof WG_API_ORIGINS;
 const REALM_KEYS = Object.keys(WG_API_ORIGINS) as Realm[];
 
-export type DisplayChip = {
-  label: string;
-  symbol: string;
-  selected: boolean;
+const REALM_SYMBOL: Record<Realm, string> = {
+  NA: "$",
+  EU: "€",
+  ASIA: "¥",
 };
 
 export type ColumnRow = {
@@ -45,7 +43,6 @@ export type ValuationSnapshot =
       kind: "numbers";
       heroAmount: number;
       rows: ColumnRow[];
-      chips: DisplayChip[];
     };
 
 export type Screen =
@@ -53,12 +50,11 @@ export type Screen =
       kind: "signed-out";
       title: "Оценка";
       subtitle: "Имущество танкового аккаунта.";
-      signInLabel: "Войти через Lesta";
-      wgSignInLabel: "Войти через WG";
+      signInLabel: "Войти";
     }
   | {
       kind: "choose-realm";
-      kicker: "Войти через WG";
+      kicker: "Войти";
       title: "Выберите Реалм";
       backLabel: "Назад";
       realms: { key: Realm; selected: boolean }[];
@@ -68,6 +64,7 @@ export type Screen =
       signOutLabel: "Выйти";
       retryLabel: "Повторить" | null;
       kicker: string;
+      symbol: string;
       snapshot: ValuationSnapshot;
     };
 
@@ -123,7 +120,7 @@ export type BoosterPrice = {
   description?: string | null;
 };
 
-export type LestaClient = {
+export type WgClient = {
   logout(accessToken: string): Promise<void>;
   prolongate(
     accessToken: string,
@@ -137,48 +134,41 @@ export type LestaClient = {
   fetchClanTag(accountId: number): Promise<string | null>;
 };
 
+export type GoldPack = {
+  gold: number;
+  money: number;
+};
+
 export type PlayerSessionConfig = {
-  applicationId: string;
   wgApplicationId: string;
   silverPerGold: number;
-  goldPackGold: number;
-  goldPackRubles: number;
   goldPerBond: number;
   freeXpPerGold: number;
-  wgSilverPerGold: number;
-  wgGoldPackGold: number;
-  wgGoldPackUsd: number;
-  wgGoldPerBond: number;
-  wgFreeXpPerGold: number;
-  rubPerByn: number;
-  rubPerUsd: number;
+  goldPacks: Record<Realm, GoldPack>;
 };
 
 export type PlayerSession = {
   screen(): Screen;
   subscribe(listener: () => void): () => void;
-  signIn(): Promise<void>;
-  startWgSignIn(): void;
+  signIn(): void;
   chooseRealm(key: Realm): Promise<void>;
   backFromRealm(): void;
   signOut(): Promise<void>;
   retry(): Promise<void>;
   onForeground(): Promise<void>;
-  chooseDisplayCurrency(label: string): void;
 };
 
 const SIGNED_OUT: Screen = {
   kind: "signed-out",
   title: "Оценка",
   subtitle: "Имущество танкового аккаунта.",
-  signInLabel: "Войти через Lesta",
-  wgSignInLabel: "Войти через WG",
+  signInLabel: "Войти",
 };
 
 function chooseRealmScreen(selected: Realm | null): Screen {
   return {
     kind: "choose-realm",
-    kicker: "Войти через WG",
+    kicker: "Войти",
     title: "Выберите Реалм",
     backLabel: "Назад",
     realms: REALM_KEYS.map((key) => ({
@@ -196,8 +186,7 @@ type CallbackAuth = {
 };
 
 type LiveAuth = CallbackAuth & {
-  source: "lesta" | "wg";
-  realm: Realm | null;
+  realm: Realm;
 };
 
 function parseCallback(url: string): CallbackAuth | "rejected" {
@@ -231,19 +220,14 @@ function openIdLoginUrl(origin: string, applicationId: string): string {
   return login.toString();
 }
 
-function formatKicker(
-  nick: string,
-  clanTag: string | null,
-  realm: Realm | null,
-): string {
+function formatKicker(nick: string, clanTag: string | null, realm: Realm): string {
   const who = clanTag ? `[${clanTag}] ${nick}` : nick;
-  return realm ? `[${realm}] ${who}` : who;
+  return `[${realm}] ${who}`;
 }
 
 export function createPlayerSession(deps: {
   customTab: CustomTab;
-  lesta: LestaClient;
-  wgForRealm: (realm: Realm) => LestaClient;
+  wgForRealm: (realm: Realm) => WgClient;
   clock: Clock;
   config: PlayerSessionConfig;
 }): PlayerSession {
@@ -252,88 +236,19 @@ export function createPlayerSession(deps: {
   let auth: LiveAuth | null = null;
   let clanTag: string | null = null;
   let selectedRealm: Realm | null = null;
-  let client: LestaClient = deps.lesta;
+  let client: WgClient | null = null;
   let collectGeneration = 0;
-  const RUB_LABEL = "рос. рубль";
-  const USD_LABEL = "доллар";
-  let displayLabel = RUB_LABEL;
-  let collected: {
-    heroAmount: number;
-    rows: ColumnRow[];
-  } | null = null;
-
-  function displayMoneys() {
-    const rub = { label: RUB_LABEL, symbol: "₽", rubPerUnit: 1 };
-    const byn = {
-      label: "бел. рубль",
-      symbol: "Br",
-      rubPerUnit: deps.config.rubPerByn,
-    };
-    const usd = {
-      label: USD_LABEL,
-      symbol: "$",
-      rubPerUnit: deps.config.rubPerUsd,
-    };
-    if (auth?.source === "wg") return [usd, rub, byn];
-    return [rub, byn, usd];
-  }
 
   function valuationRates() {
-    if (auth?.source === "wg") {
-      return {
-        silverPerGold: deps.config.wgSilverPerGold,
-        goldPackGold: deps.config.wgGoldPackGold,
-        goldPackRubles: deps.config.wgGoldPackUsd,
-        goldPerBond: deps.config.wgGoldPerBond,
-        freeXpPerGold: deps.config.wgFreeXpPerGold,
-        premiumPackages: WG_PREMIUM_PACKAGES,
-        valueTanksByTechnicalTier: false,
-        valueBoostersByTechnicalType: false,
-      };
-    }
+    const realm = auth?.realm ?? "EU";
+    const pack = deps.config.goldPacks[realm];
     return {
       silverPerGold: deps.config.silverPerGold,
-      goldPackGold: deps.config.goldPackGold,
-      goldPackRubles: deps.config.goldPackRubles,
+      goldPackGold: pack.gold,
+      goldPackMoney: pack.money,
       goldPerBond: deps.config.goldPerBond,
       freeXpPerGold: deps.config.freeXpPerGold,
-      premiumPackages: LESTA_PREMIUM_PACKAGES,
-      valueTanksByTechnicalTier: true,
-      valueBoostersByTechnicalType: true,
-    };
-  }
-
-  function selectedMoney() {
-    return (
-      displayMoneys().find((item) => item.label === displayLabel) ??
-      displayMoneys()[0]
-    );
-  }
-
-  function numbersSnapshot(
-    heroAmount: number,
-    rows: ColumnRow[],
-  ): Extract<ValuationSnapshot, { kind: "numbers" }> {
-    const selected = selectedMoney();
-    const convert = (amount: number) => {
-      if (auth?.source === "wg") {
-        if (selected.label === USD_LABEL) return amount;
-        return (amount * deps.config.rubPerUsd) / selected.rubPerUnit;
-      }
-      return amount / selected.rubPerUnit;
-    };
-    return {
-      kind: "numbers",
-      heroAmount: convert(heroAmount),
-      rows: rows.map((row) => ({
-        ...row,
-        amount: convert(row.amount),
-      })),
-      chips: displayMoneys().map((item) => ({
-        label: item.label,
-        symbol: item.symbol,
-        selected: item.label === selected.label,
-      })),
+      premiumPackages: WG_PREMIUM_PACKAGES,
     };
   }
 
@@ -351,9 +266,7 @@ export function createPlayerSession(deps: {
     auth = null;
     clanTag = null;
     selectedRealm = null;
-    collected = null;
-    displayLabel = RUB_LABEL;
-    client = deps.lesta;
+    client = null;
     show(SIGNED_OUT);
   }
 
@@ -361,20 +274,15 @@ export function createPlayerSession(deps: {
     return auth ? formatKicker(auth.nick, clanTag, auth.realm) : "";
   }
 
-  function beginLive(
-    parsed: CallbackAuth,
-    source: "lesta" | "wg",
-    realm: Realm | null,
-  ) {
-    auth = { ...parsed, source, realm };
-    displayLabel = source === "wg" ? USD_LABEL : RUB_LABEL;
-    client = source === "wg" && realm ? deps.wgForRealm(realm) : deps.lesta;
+  function beginLive(parsed: CallbackAuth, realm: Realm) {
+    auth = { ...parsed, realm };
+    client = deps.wgForRealm(realm);
     void collect();
     void loadClanTag();
   }
 
   async function refreshAuth(): Promise<boolean> {
-    if (!auth) return false;
+    if (!auth || !client) return false;
     if (deps.clock.nowUnixSeconds < auth.expiresAt) return true;
     const prolonged = await client.prolongate(auth.accessToken);
     if (prolonged === "failed") {
@@ -398,15 +306,17 @@ export function createPlayerSession(deps: {
       signOutLabel: "Выйти",
       retryLabel,
       kicker: kicker(),
+      symbol: auth ? REALM_SYMBOL[auth.realm] : "€",
       snapshot,
     };
   }
 
   async function loadClanTag() {
     const current = auth;
-    if (!current) return;
+    const currentClient = client;
+    if (!current || !currentClient) return;
     try {
-      const tag = await client.fetchClanTag(current.accountId);
+      const tag = await currentClient.fetchClanTag(current.accountId);
       if (!auth || auth.accountId !== current.accountId) return;
       clanTag = tag;
       if (screen.kind === "valuation") {
@@ -420,11 +330,12 @@ export function createPlayerSession(deps: {
   async function collect() {
     if (!(await refreshAuth())) return;
     const current = auth;
-    if (!current) return;
+    const currentClient = client;
+    if (!current || !currentClient) return;
     const generation = ++collectGeneration;
     show(withValuation({ kind: "waiting" }, null));
     try {
-      const account = await client.fetchAccount(
+      const account = await currentClient.fetchAccount(
         current.accessToken,
         current.accountId,
       );
@@ -433,7 +344,7 @@ export function createPlayerSession(deps: {
       const prices =
         tankIds.length === 0
           ? []
-          : await client.fetchVehiclePrices(tankIds);
+          : await currentClient.fetchVehiclePrices(tankIds);
       if (generation !== collectGeneration || !auth) return;
       const ownedBoosters = (account.boosters ?? []).filter(
         (row) => row.state !== "USED" && row.count > 0,
@@ -441,7 +352,7 @@ export function createPlayerSession(deps: {
       const boosterPrices =
         ownedBoosters.length === 0
           ? []
-          : await client.fetchBoosterPrices();
+          : await currentClient.fetchBoosterPrices();
       if (generation !== collectGeneration || !auth) return;
       const valued = valueAccount(
         account,
@@ -451,13 +362,13 @@ export function createPlayerSession(deps: {
         valuationRates(),
         deps.clock.nowUnixSeconds,
       );
-      collected = {
-        heroAmount: valued.heroAmount,
-        rows: valued.rows,
-      };
       show(
         withValuation(
-          numbersSnapshot(valued.heroAmount, valued.rows),
+          {
+            kind: "numbers",
+            heroAmount: valued.heroAmount,
+            rows: valued.rows,
+          },
           "Повторить",
         ),
       );
@@ -475,17 +386,7 @@ export function createPlayerSession(deps: {
         listeners.delete(listener);
       };
     },
-    async signIn() {
-      if (auth || screen.kind !== "signed-out") return;
-      const result = await deps.customTab.open(
-        openIdLoginUrl(LESTA_API_ORIGIN, deps.config.applicationId),
-      );
-      if (result.type !== "success") return;
-      const parsed = parseCallback(result.url);
-      if (parsed === "rejected") return;
-      beginLive(parsed, "lesta", null);
-    },
-    startWgSignIn() {
+    signIn() {
       if (auth || screen.kind !== "signed-out") return;
       selectedRealm = null;
       show(chooseRealmScreen(null));
@@ -501,7 +402,7 @@ export function createPlayerSession(deps: {
       if (result.type !== "success") return;
       const parsed = parseCallback(result.url);
       if (parsed === "rejected") return;
-      beginLive(parsed, "wg", key);
+      beginLive(parsed, key);
     },
     backFromRealm() {
       if (screen.kind !== "choose-realm") return;
@@ -512,7 +413,7 @@ export function createPlayerSession(deps: {
       const token = auth?.accessToken;
       const toLogout = client;
       forgetAuth();
-      if (token) await toLogout.logout(token);
+      if (token && toLogout) await toLogout.logout(token);
     },
     async retry() {
       if (!auth) return;
@@ -521,22 +422,6 @@ export function createPlayerSession(deps: {
     },
     async onForeground() {
       await refreshAuth();
-    },
-    chooseDisplayCurrency(label) {
-      if (!displayMoneys().some((item) => item.label === label)) return;
-      displayLabel = label;
-      if (
-        screen.kind === "valuation" &&
-        screen.snapshot.kind === "numbers" &&
-        collected
-      ) {
-        show(
-          withValuation(
-            numbersSnapshot(collected.heroAmount, collected.rows),
-            screen.retryLabel,
-          ),
-        );
-      }
     },
   };
 }

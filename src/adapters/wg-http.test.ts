@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { createHttpLesta } from "./lesta-http";
-import { LESTA_API_ORIGIN } from "../packages/player-session";
+import { WG_API_ORIGINS } from "../packages/player-session";
+import { createHttpWg } from "./wg-http";
 
 function jsonResponse(body: unknown, ok = true): Response {
   return {
@@ -11,7 +11,8 @@ function jsonResponse(body: unknown, ok = true): Response {
 
 function createClient(handler: (url: URL) => Response) {
   const opened: URL[] = [];
-  const client = createHttpLesta({
+  const client = createHttpWg({
+    origin: WG_API_ORIGINS.EU,
     applicationId: "app-id",
     fetch: async (input) => {
       const url = new URL(String(input));
@@ -22,7 +23,7 @@ function createClient(handler: (url: URL) => Response) {
   return { client, opened };
 }
 
-describe("HTTP Lesta: боны и клан-тег", () => {
+describe("HTTP WG: боны и клан-тег", () => {
   test("account/info: лишние extra is_premium/premium_expires_at дают INVALID_EXTRA, без них — private", async () => {
     const { client, opened } = createClient((url) => {
       const extra = url.searchParams.get("extra") ?? "";
@@ -212,14 +213,10 @@ describe("HTTP Lesta: боны и клан-тег", () => {
     await expect(client.fetchClanTag(42)).rejects.toThrow("clan");
   });
 
-  test("запросы идут на переданный origin, иначе на Lesta", async () => {
-    const lesta = createClient(() => jsonResponse({ status: "ok", data: { "1": null } }));
-    await lesta.client.fetchClanTag(1);
-    expect(lesta.opened[0].origin).toBe(new URL(LESTA_API_ORIGIN).origin);
-
+  test("запросы идут на переданный origin Реалма", async () => {
     const opened: URL[] = [];
-    const wg = createHttpLesta({
-      origin: "https://api.worldoftanks.eu",
+    const wg = createHttpWg({
+      origin: WG_API_ORIGINS.EU,
       applicationId: "wg-id",
       fetch: async (input) => {
         const url = new URL(String(input));

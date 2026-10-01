@@ -9,13 +9,12 @@ import {
 } from "react-native-safe-area-context";
 import type {
   ColumnRow,
-  DisplayChip,
   Realm,
   Screen,
   ValuationSnapshot,
 } from "../packages/player-session";
 import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
-import { RubAmount } from "./RubAmount";
+import { MoneyAmount } from "./MoneyAmount";
 
 const COLUMN_GLYPH: Record<
   ColumnRow["line"],
@@ -36,35 +35,6 @@ const COLUMN_GLYPH: Record<
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
-}
-
-function selectedSymbol(snapshot: ValuationSnapshot): string {
-  if (snapshot.kind !== "numbers") return "₽";
-  return snapshot.chips.find((chip) => chip.selected)?.symbol ?? "₽";
-}
-
-function Switcher({
-  chips,
-  onChoose,
-}: {
-  chips: DisplayChip[];
-  onChoose: (label: string) => void;
-}) {
-  return (
-    <View style={styles.switcher}>
-      {chips.map((chip) => (
-        <Pressable
-          key={chip.label}
-          onPress={() => onChoose(chip.label)}
-          style={[styles.chip, chip.selected && styles.chipOn]}
-        >
-          <Text style={[styles.chipLabel, chip.selected && styles.chipLabelOn]}>
-            {chip.label}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
 }
 
 function WaitingPulse({ style }: { style: object }) {
@@ -104,7 +74,7 @@ function HeroAmount({
     return <Text style={styles.sum}>—</Text>;
   }
   return (
-    <RubAmount amount={snapshot.heroAmount} symbol={symbol} style={styles.sum} />
+    <MoneyAmount amount={snapshot.heroAmount} symbol={symbol} style={styles.sum} />
   );
 }
 
@@ -127,7 +97,7 @@ function ColumnLine({
       />
       <Text style={styles.rowName}>
         {row.name} ({formatCount(row.count)}) ={" "}
-        <RubAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
+        <MoneyAmount amount={row.amount} symbol={symbol} style={styles.rowPrice} />
       </Text>
     </View>
   );
@@ -175,21 +145,17 @@ function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: str
 export function PlayerScreen({
   screen,
   onSignIn,
-  onSignInWg,
   onChooseRealm,
   onBackFromRealm,
   onSignOut,
   onRetry,
-  onChooseDisplayCurrency,
 }: {
   screen: Screen;
   onSignIn: () => void;
-  onSignInWg: () => void;
   onChooseRealm: (key: Realm) => void;
   onBackFromRealm: () => void;
   onSignOut: () => void;
   onRetry: () => void;
-  onChooseDisplayCurrency: (label: string) => void;
 }) {
   if (isUiPrototype) {
     return (
@@ -210,9 +176,6 @@ export function PlayerScreen({
         </View>
         <Pressable style={styles.cta} onPress={onSignIn}>
           <Text style={styles.ctaLabel}>{screen.signInLabel}</Text>
-        </Pressable>
-        <Pressable style={styles.ctaSecondary} onPress={onSignInWg}>
-          <Text style={styles.ctaSecondaryLabel}>{screen.wgSignInLabel}</Text>
         </Pressable>
       </View>
     );
@@ -252,7 +215,7 @@ export function PlayerScreen({
     );
   }
 
-  const symbol = selectedSymbol(screen.snapshot);
+  const symbol = screen.symbol;
 
   return (
     <View style={styles.body}>
@@ -275,12 +238,6 @@ export function PlayerScreen({
       <View style={styles.hero}>
         <Text style={styles.kicker}>{screen.kicker}</Text>
         <HeroAmount snapshot={screen.snapshot} symbol={symbol} />
-        {screen.snapshot.kind === "numbers" ? (
-          <Switcher
-            chips={screen.snapshot.chips}
-            onChoose={onChooseDisplayCurrency}
-          />
-        ) : null}
       </View>
       <Column snapshot={screen.snapshot} symbol={symbol} />
     </View>
@@ -353,19 +310,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  ctaSecondary: {
-    marginTop: 10,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#9a968c",
-  },
-  ctaSecondaryLabel: {
-    color: "#f3f1ea",
-    fontSize: 17,
-    fontWeight: "700",
-  },
   realmCopy: {
     flex: 1,
     paddingTop: 8,
@@ -421,29 +365,6 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
     lineHeight: 44,
     fontVariant: ["tabular-nums"],
-  },
-  switcher: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 12,
-  },
-  chip: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-    backgroundColor: "#1a1d24",
-  },
-  chipOn: {
-    backgroundColor: "#e7c46a",
-  },
-  chipLabel: {
-    color: "#9a968c",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  chipLabelOn: {
-    color: "#1a1408",
   },
   column: {
     backgroundColor: "#1a1d24",

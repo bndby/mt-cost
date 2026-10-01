@@ -1,19 +1,19 @@
 import { StyleSheet, Text, type StyleProp, type TextStyle } from "react-native";
-import { splitRubDisplay } from "./rub-display";
+import { splitMoneyDisplay } from "./money-display";
 
-const KOPECK_SIZE = 0.7;
-const KOPECK_OPACITY = 0.55;
+const MINOR_SIZE = 0.7;
+const MINOR_OPACITY = 0.55;
 
-export function RubAmount({
+export function MoneyAmount({
   amount,
-  symbol = "₽",
+  symbol = "€",
   style,
 }: {
   amount: number;
   symbol?: string;
   style?: StyleProp<TextStyle>;
 }) {
-  const { integer, kopecks } = splitRubDisplay(amount);
+  const { integer, minor } = splitMoneyDisplay(amount);
   const fontSize = StyleSheet.flatten(style)?.fontSize;
   return (
     <Text style={style}>
@@ -21,11 +21,11 @@ export function RubAmount({
       <Text
         style={{
           fontSize:
-            fontSize != null ? Math.round(fontSize * KOPECK_SIZE) : undefined,
-          opacity: KOPECK_OPACITY,
+            fontSize != null ? Math.round(fontSize * MINOR_SIZE) : undefined,
+          opacity: MINOR_OPACITY,
         }}
       >
-        ,{kopecks}
+        ,{minor}
       </Text>
       {` ${symbol}`}
     </Text>

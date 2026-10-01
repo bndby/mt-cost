@@ -1,11 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { RubAmount } from "../RubAmount";
+import { MoneyAmount } from "../MoneyAmount";
 import {
   currencies,
   kicker,
   premiumTanks,
   researchableTanks,
-  sumRub,
+  sumMoney,
 } from "./fixture";
 import { PrototypeLine } from "./PrototypeLine";
 
@@ -14,7 +14,7 @@ export function VariantA() {
     <View style={styles.root}>
       <View style={styles.hero}>
         <Text style={styles.kicker}>{kicker}</Text>
-        <RubAmount amount={sumRub} style={styles.sum} />
+        <MoneyAmount amount={sumMoney} style={styles.sum} />
       </View>
       <ScrollView
         style={styles.column}
@@ -25,8 +25,8 @@ export function VariantA() {
             key={line.name}
             name={line.name}
             count={line.count}
-            value={line.rubles}
-            symbol="₽"
+            value={line.amount}
+            symbol="€"
           />
         ))}
         {premiumTanks.map((line) => (
@@ -34,8 +34,8 @@ export function VariantA() {
             key={line.name}
             name={line.name}
             count={line.count}
-            value={line.rubles}
-            symbol="₽"
+            value={line.amount}
+            symbol="€"
           />
         ))}
         {researchableTanks.map((line) => (
@@ -43,8 +43,8 @@ export function VariantA() {
             key={line.name}
             name={line.name}
             count={line.count}
-            value={line.rubles}
-            symbol="₽"
+            value={line.amount}
+            symbol="€"
           />
         ))}
       </ScrollView>

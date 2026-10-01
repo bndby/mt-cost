@@ -1,14 +1,13 @@
 import {
-  LESTA_API_ORIGIN,
   type AccountSnapshot,
   type BoosterPrice,
-  type LestaClient,
   type OwnedBooster,
   type RentedTank,
   type VehiclePrice,
+  type WgClient,
 } from "../packages/player-session";
 
-type LestaJson = {
+type WgJson = {
   status?: string;
   data?: unknown;
 };
@@ -78,24 +77,24 @@ function numericOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function createHttpLesta(deps: {
+export function createHttpWg(deps: {
   applicationId: string;
   fetch: typeof fetch;
-  origin?: string;
-}): LestaClient {
-  const origin = deps.origin ?? LESTA_API_ORIGIN;
+  origin: string;
+}): WgClient {
+  const origin = deps.origin;
   async function getJson(
     path: string,
     params: Record<string, string>,
-  ): Promise<LestaJson> {
+  ): Promise<WgJson> {
     const url = new URL(path, `${origin}/`);
     url.searchParams.set("application_id", deps.applicationId);
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
     const response = await deps.fetch(url.toString());
-    if (!response.ok) throw new Error("lesta-http");
-    return (await response.json()) as LestaJson;
+    if (!response.ok) throw new Error("wg-http");
+    return (await response.json()) as WgJson;
   }
 
   return {

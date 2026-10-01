@@ -186,25 +186,41 @@ finish() {
 
 TOTAL_STAGES=8
 
-banner "Релиз MT Cost в Google Play"
+banner "Релиз WoT Cost в Google Play"
 
-# ── 1. Курс золота (спека: человек сверяет витрину перед релизом) ─────────
+# ── 1. Курс золота (человек сверяет витрину своего Реалма) ────────────────
 stage "Курс золота"
-say "Перед релизом сверяем крупнейший официальный пакет без скидок и комплектов."
-say "Снимок в спеке: 50 000 золота за 7800 ₽ (0,156 ₽/золото), 2026-08-30."
-open_url "https://lesta.ru/shop/mt/gold/"
-step "Войдите в магазин Lesta, если цены спрятаны за логином."
-step "Найдите самый большой пакет золота без скидки и без комплекта."
-if confirm "Это по-прежнему 50 000 золота за 7800 ₽?"; then
-  write_env GOLD_PACK_GOLD "50000"
-  write_env GOLD_PACK_RUBLES "7800"
+say "Перед релизом сверяем крупнейший пакет только из золота, без скидки и без комплекта."
+say "Валюта витрины — страна гостя, не Реалм игры. EU: евро. NA: доллар. ASIA: юань."
+say "Снимок 2026-10-01: EU 30 500 золота за 99,99 EUR; NA 25 000 за 99,99 USD; ASIA 25 000 за 625 CNY."
+open_url "https://wargaming.net/shop/wot/gold/"
+step "Откройте витрину из страны с нужной валютой. Cookie страны курс не переключает."
+if confirm "EU по-прежнему 30 500 золота за 99,99 EUR?"; then
+  write_env WG_EU_GOLD_PACK_GOLD "30500"
+  write_env WG_EU_GOLD_PACK_EUR "99.99"
 else
-  warn "Снимок курса устарел. Код оценки пока не менялся."
-  ask GOLD_PACK_GOLD "Сколько золота в крупнейшем пакете:"
-  ask GOLD_PACK_RUBLES "Цена этого пакета в рублях:"
-  write_env GOLD_PACK_GOLD "$GOLD_PACK_GOLD"
-  write_env GOLD_PACK_RUBLES "$GOLD_PACK_RUBLES"
-  warn "Обновите CONTEXT.md и src/packages/player-session/lib/valuation.ts, затем пересоберите AAB."
+  ask WG_EU_GOLD_PACK_GOLD "EU: сколько золота в крупнейшем пакете:"
+  ask WG_EU_GOLD_PACK_EUR "EU: цена этого пакета в евро:"
+  write_env WG_EU_GOLD_PACK_GOLD "$WG_EU_GOLD_PACK_GOLD"
+  write_env WG_EU_GOLD_PACK_EUR "$WG_EU_GOLD_PACK_EUR"
+fi
+if confirm "NA по-прежнему 25 000 золота за 99,99 USD?"; then
+  write_env WG_NA_GOLD_PACK_GOLD "25000"
+  write_env WG_NA_GOLD_PACK_USD "99.99"
+else
+  ask WG_NA_GOLD_PACK_GOLD "NA: сколько золота в крупнейшем пакете:"
+  ask WG_NA_GOLD_PACK_USD "NA: цена этого пакета в долларах:"
+  write_env WG_NA_GOLD_PACK_GOLD "$WG_NA_GOLD_PACK_GOLD"
+  write_env WG_NA_GOLD_PACK_USD "$WG_NA_GOLD_PACK_USD"
+fi
+if confirm "ASIA по-прежнему 25 000 золота за 625 CNY?"; then
+  write_env WG_ASIA_GOLD_PACK_GOLD "25000"
+  write_env WG_ASIA_GOLD_PACK_CNY "625"
+else
+  ask WG_ASIA_GOLD_PACK_GOLD "ASIA: сколько золота в крупнейшем пакете:"
+  ask WG_ASIA_GOLD_PACK_CNY "ASIA: цена этого пакета в юанях:"
+  write_env WG_ASIA_GOLD_PACK_GOLD "$WG_ASIA_GOLD_PACK_GOLD"
+  write_env WG_ASIA_GOLD_PACK_CNY "$WG_ASIA_GOLD_PACK_CNY"
 fi
 pause "Enter — дальше."
 
@@ -219,10 +235,10 @@ pause "Enter, когда Console открывается под вашим акк
 
 # ── 3. Создать приложение ─────────────────────────────────────────────────
 stage "Создать приложение"
-say "EAS не создаёт карточку в Play. Package уже задан: by.bnd.mtcost"
+say "Карточку в Play создаёте вы. Package уже задан: by.bnd.wotcost"
 open_url "https://play.google.com/console/u/0/developers"
 step "All apps → Create app."
-step "App name: Оценка аккаунта Мира танков"
+step "App name: Оценка аккаунта World of Tanks"
 step "Default language: Русский."
 step "App or game: App. Free or paid: Free."
 step "Отметьте декларации политик и нажмите Create app."
@@ -235,7 +251,7 @@ open_url "https://console.cloud.google.com/projectcreate"
 step "Создайте проект (или выберите уже существующий) и дождитесь, пока он станет активным."
 open_url "https://console.cloud.google.com/iam-admin/serviceaccounts"
 step "IAM & Admin → Service Accounts → Create Service Account."
-step "Name: mt-cost-play. Description: Play Console uploads for MT Cost."
+step "Name: mt-cost-play. Description: Play Console uploads for WoT Cost."
 step "Create and continue, роли не назначайте, Create and close."
 step "Скопируйте email вида mt-cost-play@….iam.gserviceaccount.com"
 ask GOOGLE_SERVICE_ACCOUNT_EMAIL "Вставьте email service account:"
@@ -260,7 +276,7 @@ step "Откройте Google Play Android Developer API и нажмите Enabl
 open_url "https://play.google.com/console/users-and-permissions"
 step "Users and permissions → Invite new users."
 step "Email: тот, что только что сохранили в GOOGLE_SERVICE_ACCOUNT_EMAIL"
-step "App permissions: выберите MT Cost / эту карточку приложения."
+step "App permissions: выберите WoT Cost / эту карточку приложения."
 step "Поставьте: View app information (read-only); Edit and delete draft apps;"
 step "Release to production, exclude devices, and use Play App Signing;"
 step "Release apps to testing tracks; Manage testing tracks and edit tester lists;"
@@ -289,19 +305,19 @@ step "Политика приложения → пройдите все пунк
 step "Реклама: нет."
 step "Целевая аудитория: 16+, не для детей."
 step "Новости / COVID / госприложения / финансы: нет."
-step "Безопасность данных: передаём Lesta идентификатор аккаунта и токен; сами не собираем."
-step "Рейтинг контента: анкета утилиты, без насилия и покупок; обмен данными с Lesta — да."
-step "Доступ к приложению: да. Вставьте логин и пароль ТЕСТОВОГО аккаунта Lesta"
+step "Безопасность данных: передаём WG идентификатор аккаунта и токен; сами не собираем."
+step "Рейтинг контента: анкета утилиты, без насилия и покупок; обмен данными с WG — да."
+step "Доступ к приложению: да. Вставьте логин и пароль ТЕСТОВОГО аккаунта World of Tanks"
 step "только в форму Play (не в .env и не в чат). Инструкция рецензенту:"
-step "нажать «Войти через Lesta», ввести данные на странице Lesta, дождаться возврата."
+step "нажать «Войти», выбрать Реалм, ввести данные на странице WG, дождаться возврата."
 pause "Enter, когда декларации заполнены."
 
 # ── 8. Тестеры ────────────────────────────────────────────────────────────
 stage "Закрытое тестирование"
-say "Первый AAB EAS кладёт на internal (черновик). Production — после 12 тестеров × 14 дней,"
+say "AAB собирается на хосте (npm run build:android) и уходит в internal черновиком. Production — после 12 тестеров × 14 дней,"
 say "если аккаунт личный и создан после 13.11.2023. Organization и старые аккаунты — исключение."
 open_url "https://play.google.com/console/u/0/developers"
-step "Test and release → Testing → Internal testing: после eas submit опубликуйте черновик."
+step "Test and release → Testing → Internal testing: после npm run submit:android опубликуйте черновик."
 step "Closed testing (не Internal): создайте список email, минимум 12 человек с запасом."
 step "Тестеры должны перейти по ссылке opt-in с Android-устройства и оставаться 14 дней."
 step "Когда порог выполнен: Dashboard → Apply for production."

@@ -265,8 +265,8 @@
     { key: "failure", name: "Оценка · прочерки" },
   ];
   const DATA = {
-    success: { tanks: "23", tanksRub: "48 360 ₽", otherRub: "2 184 ₽", sumRub: "50 544 ₽" },
-    empty: { tanks: "0", tanksRub: "0 ₽", otherRub: "312 ₽", sumRub: "312 ₽" },
+    success: { tanks: "23", tanksRub: "48 360 €", otherRub: "2 184 €", sumRub: "50 544 €" },
+    empty: { tanks: "0", tanksRub: "0 €", otherRub: "312 €", sumRub: "312 €" },
   };
   // WG realm step (issue #52): three interaction styles to grill against in #53.
   const REALMS = [
@@ -281,7 +281,7 @@
   ];
   let realmCursor = 0;
   let chosenRealm = null;
-  let loginSource = null; // "lesta" | "wg" — for the state dump only
+  let loginSource = null;
   function resetWgFlow() {
     chosenRealm = null;
     realmCursor = 0;
@@ -364,13 +364,12 @@
         ${signedOut ? `
           <div class="a-login-copy">
             <h2 class="a-title">Оценка</h2>
-            <p class="a-sub">Имущество аккаунта Мира танков в рублях.</p>
+            <p class="a-sub">Имущество аккаунта World of Tanks.</p>
           </div>
-          <button class="ui a-cta" data-act="login">Войти через Lesta</button>
-          <button class="ui cta-secondary" data-act="wg-login">Войти через WG</button>
+          <button class="ui a-cta" data-act="login">Войти</button>
         ` : wgRealm ? `
           <div class="a-hero" style="justify-content:flex-start; padding-top:8px;">
-            ${realmScreen("Войти через WG")}
+            ${realmScreen("Войти")}
           </div>
         ` : `
           <div class="a-hero">
@@ -380,7 +379,7 @@
           </div>
           <div class="a-dock">
             <div><span class="lbl">Танки</span><span class="val">${slot(scene, "tanks")}</span></div>
-            <div><span class="lbl">Танки, ₽</span><span class="val">${slot(scene, "tanksRub")}</span></div>
+            <div><span class="lbl">Танки, €</span><span class="val">${slot(scene, "tanksRub")}</span></div>
             <div><span class="lbl">Прочее имущество</span><span class="val">${slot(scene, "otherRub")}</span></div>
           </div>
         `}
@@ -401,7 +400,7 @@
     return `<div class="screen is-on b">
       ${statusBar()}
       <div class="b-bar">
-        <span>MT Cost</span>
+        <span>WoT Cost</span>
         ${
           signedOut ? "<span></span>"
           : wgRealm ? `<button class="ui b-exit" data-act="wg-back">Назад</button>`
@@ -411,12 +410,11 @@
       <div class="b-body">
         ${signedOut ? `
           <div class="b-login">
-            <p>Чтобы увидеть оценку, войдите через Lesta OpenID.</p>
-            <button class="ui b-cta" data-act="login">Lesta OpenID</button>
-            <button class="ui cta-secondary" data-act="wg-login" style="margin-top:10px;">Войти через WG</button>
+            <p>Чтобы увидеть оценку, войдите через WG OpenID.</p>
+            <button class="ui b-cta" data-act="login">Войти</button>
           </div>
         ` : wgRealm ? `
-          <div class="b-login">${realmScreen("Войти через WG")}</div>
+          <div class="b-login">${realmScreen("Войти")}</div>
         ` : `
           <div class="b-grid">${tiles}</div>
           <div class="b-actions">${fail ? `<button class="ui b-retry" data-act="retry">Повторить</button>` : ""}</div>
@@ -440,11 +438,11 @@
         <div class="c-head">Оценка имущества</div>
         ${signedOut ? `
           <h2 class="c-login-title">Нужен вход</h2>
-          <p class="c-login-copy">Lesta OpenID. Пароль вводится на стороне Lesta, не здесь.</p>
+          <p class="c-login-copy">WG OpenID. Пароль вводится на стороне WG, не здесь.</p>
           <button class="ui c-cta" data-act="login">Войти</button>
           <button class="ui c-cta" data-act="wg-login" style="margin-top:14px;">Войти через WG</button>
         ` : wgRealm ? `
-          ${realmScreen("Войти через WG")}
+          ${realmScreen("Войти")}
           <div class="c-foot"><button class="ui c-exit" data-act="wg-back">Назад</button><span></span></div>
         ` : `
           ${rows}
@@ -522,7 +520,7 @@
     }
     const b = e.target.closest("[data-act]");
     if (!b) return;
-    if (b.dataset.act === "login") { loginSource = "lesta"; setParams({ scene: "waiting" }); }
+    if (b.dataset.act === "login") { resetWgFlow(); setParams({ scene: "wg-realm" }); }
     if (b.dataset.act === "retry") setParams({ scene: "waiting" });
     if (b.dataset.act === "logout") { loginSource = null; resetWgFlow(); setParams({ scene: "signed-out" }); }
     if (b.dataset.act === "wg-login") { resetWgFlow(); setParams({ scene: "wg-realm" }); }

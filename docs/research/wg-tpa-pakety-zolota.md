@@ -14,7 +14,7 @@
 | 180 | 13 500 | **11 900** |
 | 90 | 7 500 | **6 900** |
 
-Публичный API пакетов ТПА не отдаёт (`premium_expires_at` — только срок). Это витрина клиента, не техническая стоимость Lesta.
+Публичный API пакетов ТПА не отдаёт (`premium_expires_at` — только срок). Это витрина клиента.
 
 Гайд [Going Premium](https://worldoftanks.com/en/content/guide/wot_economy/going_premium/) на 2026-09-09 отдаёт 404. Снимок официальной страницы Wayback **2026-01-23** (HTML с `currency__gold`) даёт короткие пакеты и те же длинные:
 
@@ -29,7 +29,7 @@
 | 180 | 11 900 |
 | 360 | 20 500 |
 
-Совпадение коротких пакетов с ADR-0002 — факт витрины WG, не перенос прайса Lesta. Подробнее и про свободный опыт: [wg-tehnicheskaya-stoimost.md](wg-tehnicheskaya-stoimost.md). Wayback: http://web.archive.org/web/20260123165347/https://worldoftanks.com/en/content/guide/wot_economy/going_premium/
+Короткие пакеты — факт витрины WG. Свободный опыт: 1 золото = 25 XP, см. [wg-tehnicheskaya-stoimost.md](wg-tehnicheskaya-stoimost.md). Wayback: http://web.archive.org/web/20260123165347/https://worldoftanks.com/en/content/guide/wot_economy/going_premium/
 
 Modern Armor (`modernarmor.worldoftanks.com`) — другая игра: 180 дней = 13 500, 360 = 24 000. Не использовать.
 

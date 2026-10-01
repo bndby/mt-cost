@@ -1,11 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { RubAmount } from "../RubAmount";
+import { MoneyAmount } from "../MoneyAmount";
 import {
   currencies,
   kicker,
   premiumTanks,
   researchableTanks,
-  sumRub,
+  sumMoney,
 } from "./fixture";
 import { PrototypeLine } from "./PrototypeLine";
 
@@ -14,23 +14,23 @@ function Section({
   lines,
 }: {
   title: string;
-  lines: { name: string; count: number; rubles: number }[];
+  lines: { name: string; count: number; amount: number }[];
 }) {
   if (lines.length === 0) return null;
-  const total = lines.reduce((sum, line) => sum + line.rubles, 0);
+  const total = lines.reduce((sum, line) => sum + line.amount, 0);
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <RubAmount amount={total} style={styles.sectionTotal} />
+        <MoneyAmount amount={total} style={styles.sectionTotal} />
       </View>
       {lines.map((line) => (
         <PrototypeLine
           key={line.name}
           name={line.name}
           count={line.count}
-          value={line.rubles}
-          symbol="₽"
+          value={line.amount}
+          symbol="€"
         />
       ))}
     </View>
@@ -42,7 +42,7 @@ export function VariantB() {
     <View style={styles.root}>
       <View style={styles.hero}>
         <Text style={styles.kicker}>{kicker}</Text>
-        <RubAmount amount={sumRub} style={styles.sum} />
+        <MoneyAmount amount={sumMoney} style={styles.sum} />
       </View>
       <ScrollView contentContainerStyle={styles.list}>
         <View style={styles.section}>
@@ -51,8 +51,8 @@ export function VariantB() {
               key={line.name}
               name={line.name}
               count={line.count}
-              value={line.rubles}
-              symbol="₽"
+              value={line.amount}
+              symbol="€"
             />
           ))}
         </View>

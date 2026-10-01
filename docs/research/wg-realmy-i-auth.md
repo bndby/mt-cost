@@ -1,16 +1,16 @@
 # Реалмы и `application_id` у WG (World of Tanks Public API)
 
-Вопрос: работает ли один `application_id` на всех трёх хостах WG Public API для World of Tanks — `api.worldoftanks.com` (NA), `api.worldoftanks.eu` (EU), `api.worldoftanks.asia` (ASIA) — или нужна отдельная регистрация/привязка на Реалм? Совпадают ли параметры `wot/auth/login`, `wot/auth/prolongate`, `wot/auth/logout` с тем, что уже задокументировано для Lesta?
+Вопрос: работает ли один `application_id` на всех трёх хостах WG Public API для World of Tanks — `api.worldoftanks.com` (NA), `api.worldoftanks.eu` (EU), `api.worldoftanks.asia` (ASIA) — или нужна отдельная регистрация на Реалм? Какие параметры у `wot/auth/login`, `wot/auth/prolongate`, `wot/auth/logout`?
 
 В `.env` уже лежит рабочий `WG_APPLICATION_ID` (зарегистрирован вручную, вне этой карты) — используется ниже для живой проверки, значение в этот файл не выводится.
 
-Термины — как в `CONTEXT.md`: **WG-аккаунт**, **WG OpenID**, **Реалм**. Источник глубины/структуры — `docs/research/lesta-openid-expo-android.md` (сам он не источник фактов о WG). Дата съёмки: 2026-09-07.
+Термины — как в `CONTEXT.md`: **WG-аккаунт**, **WG OpenID**, **Реалм**. Дата съёмки: 2026-09-07.
 
 ## Короткий ответ
 
 Один `application_id` работает на всех трёх Реалмах без отдельной регистрации: [«Использование API»](https://developers.wargaming.net/documentation/guide/principles/) прямо говорит, что для **автономного** (standalone) приложения проверяется только `application_id`, IP и, тем более, Реалм не проверяются. Живая проверка подтверждает это эмпирически: один и тот же `WG_APPLICATION_ID` вернул `"status":"ok"` на `api.worldoftanks.com`, `api.worldoftanks.eu` и `api.worldoftanks.asia` — и на публичном методе (`wot/encyclopedia/info`), и на `wot/auth/login` (см. [§2](#2-один-application_id-на-три-реалма--подтверждено-вживую)).
 
-Параметры `wot/auth/login`, `wot/auth/prolongate`, `wot/auth/logout` **совпадают** с тем, что задокументировано для Lesta — `redirect_uri`, `expires_at`, `access_token`, `account_id`, `nickname`, лимит токена в две недели, коды ошибок `401 AUTH_CANCEL` / `403 AUTH_EXPIRED` / `410 AUTH_ERROR`. Единственное отличие от Lesta — сам хост в `redirect_uri` по умолчанию меняется по выбранному Реалму (`api.worldoftanks.eu/wot//blank/` для EU, `api.worldoftanks.com/wot//blank/` для NA), но это ожидаемо и не меняет набор полей.
+Параметры `wot/auth/login`, `wot/auth/prolongate`, `wot/auth/logout`: `redirect_uri`, `expires_at`, `access_token`, `account_id`, `nickname`, лимит токена в две недели, коды ошибок `401 AUTH_CANCEL` / `403 AUTH_EXPIRED` / `410 AUTH_ERROR`. Хост в `redirect_uri` по умолчанию меняется по выбранному Реалму (`api.worldoftanks.eu/wot//blank/` для EU, `api.worldoftanks.com/wot//blank/` для NA). Набор полей от этого не меняется.
 
 ## 1. `application_id` и типы приложений
 
@@ -87,7 +87,7 @@ GET https://api.worldoftanks.asia/wot/auth/login/?application_id=<WG_APPLICATION
 
 Ошибки метода: `401 AUTH_CANCEL` (отменено пользователем), `403 AUTH_EXPIRED` (истекло время ожидания), `410 AUTH_ERROR` (ошибка аутентификации).
 
-Это **точное совпадение** по набору полей и по кодам ошибок с [`wot/auth/login` у Lesta](https://developers.lesta.ru/reference/all/wot/auth/login/): те же `status`/`access_token`/`expires_at`/`account_id`/`nickname` при успехе, те же `code`/`message` при ошибке, те же три кода ошибок метода.
+Это **тот же набор полей и коды ошибок**, что в справочнике [`wot/auth/login`](https://developers.wargaming.net/reference/all/wot/auth/login/): `status` / `access_token` / `expires_at` / `account_id` / `nickname` при успехе, `code` / `message` при ошибке, три кода ошибок метода.
 
 ## 4. `wot/auth/prolongate`
 
@@ -99,7 +99,7 @@ GET https://api.worldoftanks.asia/wot/auth/login/?application_id=<WG_APPLICATION
 
 Ответ: `access_token`, `account_id`, `expires_at`.
 
-Продление проходит без повторного ввода пароля — то же самое, что у [`wot/auth/prolongate` у Lesta](https://developers.lesta.ru/reference/all/wot/auth/prolongate/), с идентичным набором параметров и полей ответа.
+Продление проходит без повторного ввода пароля. Параметры и поля ответа — как в [`wot/auth/prolongate`](https://developers.wargaming.net/reference/all/wot/auth/prolongate/).
 
 ## 5. `wot/auth/logout`
 
@@ -109,11 +109,11 @@ GET https://api.worldoftanks.asia/wot/auth/login/?application_id=<WG_APPLICATION
 
 Параметры: `application_id`\*, `access_token`\*. Ответ — пустой блок данных (только `status`).
 
-[«Использование API»](https://developers.wargaming.net/documentation/guide/principles/) требует того же самого, что и у Lesta: если приложение аутентифицирует через WG OpenID, функция «выход» **обязательна**; игрок также может сам завершить сессию на странице «Sessions» в личном кабинете — это тоже инвалидирует `access_token`.
+[«Использование API»](https://developers.wargaming.net/documentation/guide/principles/) требует: если приложение аутентифицирует через WG OpenID, функция «выход» **обязательна**; игрок также может сам завершить сессию на странице «Sessions» в личном кабинете — это тоже инвалидирует `access_token`.
 
-Набор параметров и требование обязательного выхода — точное совпадение с [`wot/auth/logout` у Lesta](https://developers.lesta.ru/reference/all/wot/auth/logout/).
+Параметры выхода и требование обязательного выхода — как в [`wot/auth/logout`](https://developers.wargaming.net/reference/all/wot/auth/logout/).
 
-## 6. Срок `access_token` и лимиты — совпадение с Lesta
+## 6. Срок `access_token` и лимиты
 
 Источник: [«Использование API»](https://developers.wargaming.net/documentation/guide/principles/), [«Начало работы»](https://developers.wargaming.net/documentation/guide/getting-started/).
 
@@ -122,21 +122,21 @@ GET https://api.worldoftanks.asia/wot/auth/login/?application_id=<WG_APPLICATION
 - Автономное приложение: только `application_id` проверяется, лимит **10 запросов/с с одного IP**, без IP-whitelist.
 - Серверное приложение (не подходит для клиента без бэкенда): whitelist до 5 IP на `application_id`, лимит 20 запросов/с на IP.
 
-Это дословно те же цифры и правила, что в [Lesta-исследовании](../research/lesta-openid-expo-android.md) — с той лишь разницей, что у WG «своя» OpenID-страница на `na` / `eu` / `asia.wargaming.net` по выбранному Реалму, а у Lesta Реалма нет вовсе (один кластер ru/СНГ).
+OpenID-страница своего Реалма: `na` / `eu` / `asia.wargaming.net`.
 
-## Сопоставление полей: WG vs Lesta
+## Поля `wot/auth/*`
 
-| | WG (`wot/auth/*`) | Lesta (`wot/auth/*`) |
-| --- | --- | --- |
-| Хостов/кластеров | 3 (`api.worldoftanks.{com,eu,asia}`) | 1 (`api.tanki.su`) |
-| `application_id` на кластер | один общий, без привязки к Реалму | один (Реалма нет) |
-| `login` параметры | `application_id`\*, `display`, `expires_at`, `nofollow`, `redirect_uri` | те же поля |
-| `login` успех → `redirect_uri` | `status`, `access_token`, `expires_at`, `account_id`, `nickname` | те же поля |
-| `login` коды ошибок | `401 AUTH_CANCEL`, `403 AUTH_EXPIRED`, `410 AUTH_ERROR` | те же коды |
-| `prolongate` параметры | `application_id`\*, `access_token`\*, `expires_at` | те же поля |
-| `logout` параметры | `application_id`\*, `access_token`\* | те же поля |
-| Срок `access_token` | максимум 2 недели | максимум 2 недели |
-| Автономное приложение | только `application_id`, 10 запросов/с с одного IP, без IP-whitelist | то же |
+| | WG (`wot/auth/*`) |
+| --- | --- |
+| Хосты | 3 (`api.worldoftanks.{com,eu,asia}`) |
+| `application_id` | один общий, без привязки к Реалму |
+| `login` параметры | `application_id`*, `display`, `expires_at`, `nofollow`, `redirect_uri` |
+| `login` успех → `redirect_uri` | `status`, `access_token`, `expires_at`, `account_id`, `nickname` |
+| `login` коды ошибок | `401 AUTH_CANCEL`, `403 AUTH_EXPIRED`, `410 AUTH_ERROR` |
+| `prolongate` параметры | `application_id`*, `access_token`*, `expires_at` |
+| `logout` параметры | `application_id`*, `access_token`* |
+| Срок `access_token` | максимум 2 недели |
+| Автономное приложение | только `application_id`, 10 запросов/с с одного IP, без IP-whitelist |
 
 ## Источники
 

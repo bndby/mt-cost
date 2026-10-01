@@ -10,28 +10,16 @@ import type {
 
 export type ValuationRates = Pick<
   PlayerSessionConfig,
-  | "silverPerGold"
-  | "goldPackGold"
-  | "goldPackRubles"
-  | "goldPerBond"
-  | "freeXpPerGold"
+  "silverPerGold" | "goldPerBond" | "freeXpPerGold"
 > & {
+  goldPackGold: number;
+  goldPackMoney: number;
   premiumPackages: readonly { days: number; gold: number }[];
-  valueTanksByTechnicalTier: boolean;
-  valueBoostersByTechnicalType: boolean;
 };
 
-function rublesFromGold(gold: number, rates: ValuationRates): number {
-  return (gold * rates.goldPackRubles) / rates.goldPackGold;
+function moneyFromGold(gold: number, rates: ValuationRates): number {
+  return (gold * rates.goldPackMoney) / rates.goldPackGold;
 }
-
-export const LESTA_PREMIUM_PACKAGES = [
-  { days: 30, gold: 2500 },
-  { days: 14, gold: 1800 },
-  { days: 7, gold: 1250 },
-  { days: 3, gold: 650 },
-  { days: 1, gold: 250 },
-] as const;
 
 export const WG_PREMIUM_PACKAGES = [
   { days: 360, gold: 20_500 },
@@ -43,19 +31,6 @@ export const WG_PREMIUM_PACKAGES = [
   { days: 3, gold: 650 },
   { days: 1, gold: 250 },
 ] as const;
-
-const TANK_TIER_GOLD: Record<number, number> = {
-  2: 2500,
-  3: 3000,
-  4: 3500,
-  5: 4500,
-  6: 6000,
-  7: 8000,
-  8: 11_000,
-  9: 17_500,
-  10: 25_000,
-  11: 50_000,
-};
 
 function premiumAccountValue(
   premiumExpiresAt: number | null,
@@ -95,47 +70,24 @@ function pushRow(
   if (count > 0) rows.push({ line, name, count, amount });
 }
 
-function technicalBoosterGold(price: BoosterPrice): number | null {
-  if ((price.lifetime ?? 0) !== 3600) return null;
-  const desc = price.description ?? "";
-  const resource = price.resource ?? "";
-  if (resource === "credits" && desc.includes("+50%")) return 250;
-  if (resource === "experience" && desc.includes("+100%")) return 150;
-  if (resource === "experience" && desc.includes("+50%")) return 100;
-  if (resource === "free_xp_and_crew_xp" && desc.includes("+300%")) return 150;
-  if (resource === "free_xp_and_crew_xp" && desc.includes("+200%")) return 100;
-  return null;
-}
-
 function boosterUnitGold(
   owned: OwnedBooster,
   catalog: Map<number, BoosterPrice>,
-  useTechnical: boolean,
 ): number {
   if (owned.state === "USED" || owned.count <= 0) return 0;
   const price = catalog.get(owned.boosterId);
   const apiGold = price?.priceGold ?? 0;
-  if (apiGold > 0) return apiGold;
-  if (!useTechnical || !price) return 0;
-  return technicalBoosterGold(price) ?? 0;
+  return apiGold > 0 ? apiGold : 0;
 }
 
-function tankGoldAndSilver(
-  price: VehiclePrice | undefined,
-  useTechnicalTier: boolean,
-): { gold: number; silver: number } {
+function tankGoldAndSilver(price: VehiclePrice | undefined): {
+  gold: number;
+  silver: number;
+} {
   const catalogGold = price?.priceGold ?? 0;
   const catalogSilver = price?.priceSilver ?? 0;
   if (catalogGold > 0) return { gold: catalogGold, silver: 0 };
   if (catalogSilver > 0) return { gold: 0, silver: catalogSilver };
-  if (
-    useTechnicalTier &&
-    (price?.isPremium || price?.isGift) &&
-    price.tier != null
-  ) {
-    const gold = TANK_TIER_GOLD[price.tier] ?? 0;
-    return { gold, silver: 0 };
-  }
   return { gold: 0, silver: 0 };
 }
 
@@ -164,10 +116,7 @@ export function valueAccount(
     rates.premiumPackages,
   );
   for (const tankId of tankIds) {
-    const valued = tankGoldAndSilver(
-      priceById.get(tankId),
-      rates.valueTanksByTechnicalTier,
-    );
+    const valued = tankGoldAndSilver(priceById.get(tankId));
     if (valued.gold > 0) {
       premiumCount += 1;
       premiumGold += valued.gold;
@@ -180,11 +129,7 @@ export function valueAccount(
   let boosterCount = 0;
   let boosterGold = 0;
   for (const owned of account.boosters ?? []) {
-    const unit = boosterUnitGold(
-      owned,
-      boosterById,
-      rates.valueBoostersByTechnicalType,
-    );
+    const unit = boosterUnitGold(owned, boosterById);
     if (unit <= 0) continue;
     boosterCount += owned.count;
     boosterGold += unit * owned.count;
@@ -197,56 +142,56 @@ export function valueAccount(
     "bonds",
     "Боны",
     account.bonds,
-    rublesFromGold(account.bonds * rates.goldPerBond, rates),
+    moneyFromGold(account.bonds * rates.goldPerBond, rates),
   );
   pushRow(
     rows,
     "gold",
     "Золото",
     account.gold,
-    rublesFromGold(account.gold, rates),
+    moneyFromGold(account.gold, rates),
   );
   pushRow(
     rows,
     "silver",
     "Серебро",
     account.silver,
-    rublesFromGold(account.silver / rates.silverPerGold, rates),
+    moneyFromGold(account.silver / rates.silverPerGold, rates),
   );
   pushRow(
     rows,
     "freeXp",
     "Своб. опыт",
     freeXp,
-    rublesFromGold(freeXp / rates.freeXpPerGold, rates),
+    moneyFromGold(freeXp / rates.freeXpPerGold, rates),
   );
   pushRow(
     rows,
     "boosters",
     "Резервы",
     boosterCount,
-    rublesFromGold(boosterGold, rates),
+    moneyFromGold(boosterGold, rates),
   );
   pushRow(
     rows,
     "premiumAccount",
     "Прем. акк",
     premiumAccount.days,
-    rublesFromGold(premiumAccount.gold, rates),
+    moneyFromGold(premiumAccount.gold, rates),
   );
   pushRow(
     rows,
     "premium",
     "Прем. танки",
     premiumCount,
-    rublesFromGold(premiumGold, rates),
+    moneyFromGold(premiumGold, rates),
   );
   pushRow(
     rows,
     "researchable",
     "Танки",
     researchableCount,
-    rublesFromGold(researchableSilver / rates.silverPerGold, rates),
+    moneyFromGold(researchableSilver / rates.silverPerGold, rates),
   );
 
   return {

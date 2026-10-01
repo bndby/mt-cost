@@ -2,30 +2,39 @@ import Constants from "expo-constants";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
 import { createExpoCustomTab } from "./src/adapters/expo-custom-tab";
-import { createHttpLesta } from "./src/adapters/lesta-http";
+import { createHttpWg } from "./src/adapters/wg-http";
 import { systemClock } from "./src/adapters/system-clock";
 import { requiredApplicationId } from "./src/config/application-ids";
 import {
   WG_API_ORIGINS,
   createPlayerSession,
+  type GoldPack,
   type Realm,
 } from "./src/packages/player-session";
 import { AppChrome, PlayerScreen } from "./src/ui/PlayerScreen";
 
 const extra = Constants.expoConfig?.extra ?? {};
 
-function snapshotNumber(value: unknown): number {
+function snapshotNumber(name: string, value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) {
-    throw new Error("rate snapshot");
+    throw new Error(`${name} is required`);
   }
   return n;
 }
 
-const applicationId = requiredApplicationId(
-  "LESTA_APPLICATION_ID",
-  extra.lestaApplicationId as string | undefined,
-);
+function goldPack(
+  goldName: string,
+  gold: unknown,
+  moneyName: string,
+  money: unknown,
+): GoldPack {
+  return {
+    gold: snapshotNumber(goldName, gold),
+    money: snapshotNumber(moneyName, money),
+  };
+}
+
 const wgApplicationId = requiredApplicationId(
   "WG_APPLICATION_ID",
   extra.wgApplicationId as string | undefined,
@@ -36,32 +45,44 @@ export default function App() {
     () =>
       createPlayerSession({
         customTab: createExpoCustomTab(),
-        lesta: createHttpLesta({
-          applicationId,
-          fetch: globalThis.fetch.bind(globalThis),
-        }),
         wgForRealm: (realm: Realm) =>
-          createHttpLesta({
+          createHttpWg({
             origin: WG_API_ORIGINS[realm],
             applicationId: wgApplicationId,
             fetch: globalThis.fetch.bind(globalThis),
           }),
         clock: systemClock,
         config: {
-          applicationId,
           wgApplicationId,
-          silverPerGold: snapshotNumber(extra.silverPerGold),
-          goldPackGold: snapshotNumber(extra.goldPackGold),
-          goldPackRubles: snapshotNumber(extra.goldPackRubles),
-          goldPerBond: snapshotNumber(extra.goldPerBond),
-          freeXpPerGold: snapshotNumber(extra.freeXpPerGold),
-          wgSilverPerGold: snapshotNumber(extra.wgSilverPerGold),
-          wgGoldPackGold: snapshotNumber(extra.wgGoldPackGold),
-          wgGoldPackUsd: snapshotNumber(extra.wgGoldPackUsd),
-          wgGoldPerBond: snapshotNumber(extra.wgGoldPerBond),
-          wgFreeXpPerGold: snapshotNumber(extra.wgFreeXpPerGold),
-          rubPerByn: snapshotNumber(extra.rubPerByn),
-          rubPerUsd: snapshotNumber(extra.rubPerUsd),
+          silverPerGold: snapshotNumber(
+            "WG_SILVER_PER_GOLD",
+            extra.silverPerGold,
+          ),
+          goldPerBond: snapshotNumber("WG_GOLD_PER_BOND", extra.goldPerBond),
+          freeXpPerGold: snapshotNumber(
+            "WG_FREE_XP_PER_GOLD",
+            extra.freeXpPerGold,
+          ),
+          goldPacks: {
+            EU: goldPack(
+              "WG_EU_GOLD_PACK_GOLD",
+              extra.euGoldPackGold,
+              "WG_EU_GOLD_PACK_EUR",
+              extra.euGoldPackEur,
+            ),
+            NA: goldPack(
+              "WG_NA_GOLD_PACK_GOLD",
+              extra.naGoldPackGold,
+              "WG_NA_GOLD_PACK_USD",
+              extra.naGoldPackUsd,
+            ),
+            ASIA: goldPack(
+              "WG_ASIA_GOLD_PACK_GOLD",
+              extra.asiaGoldPackGold,
+              "WG_ASIA_GOLD_PACK_CNY",
+              extra.asiaGoldPackCny,
+            ),
+          },
         },
       }),
     [],
@@ -84,13 +105,11 @@ export default function App() {
     <AppChrome>
       <PlayerScreen
         screen={screen}
-        onSignIn={() => void session.signIn()}
-        onSignInWg={() => session.startWgSignIn()}
+        onSignIn={() => session.signIn()}
         onChooseRealm={(key) => void session.chooseRealm(key)}
         onBackFromRealm={() => session.backFromRealm()}
         onSignOut={() => void session.signOut()}
         onRetry={() => void session.retry()}
-        onChooseDisplayCurrency={(label) => session.chooseDisplayCurrency(label)}
       />
     </AppChrome>
   );

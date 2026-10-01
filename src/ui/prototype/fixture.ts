@@ -3,7 +3,7 @@
 export type PrototypeLine = {
   name: string;
   count: number;
-  rubles: number;
+  amount: number;
 };
 
 export const nick = "Red_Baron";
@@ -11,29 +11,29 @@ export const clanTag = "RED";
 export const kicker = `[${clanTag}] ${nick}`;
 
 export const currencies: PrototypeLine[] = [
-  { name: "Боны", count: 12_400, rubles: 1_934.4 },
-  { name: "Золото", count: 8_150, rubles: 1_271.4 },
-  { name: "Серебро", count: 12_450_000, rubles: 4_855.5 },
+  { name: "Боны", count: 12_400, amount: 1_934.4 },
+  { name: "Золото", count: 8_150, amount: 1_271.4 },
+  { name: "Серебро", count: 12_450_000, amount: 4_855.5 },
 ];
 
 export const premiumTanks: PrototypeLine[] = [
-  { name: "Type 59", count: 1, rubles: 1_170 },
-  { name: "Löwe", count: 1, rubles: 1_950 },
-  { name: "Объект 279 (р)", count: 1, rubles: 2_340 },
-  { name: "Т-22 ср.", count: 1, rubles: 1_840.8 },
+  { name: "Type 59", count: 1, amount: 1_170 },
+  { name: "Löwe", count: 1, amount: 1_950 },
+  { name: "Объект 279 (р)", count: 1, amount: 2_340 },
+  { name: "Т-22 ср.", count: 1, amount: 1_840.8 },
 ];
 
 export const researchableTanks: PrototypeLine[] = [
-  { name: "ИС-7", count: 1, rubles: 2_379 },
-  { name: "Объект 140", count: 1, rubles: 2_379 },
-  { name: "Т-54", count: 1, rubles: 1_390.35 },
-  { name: "ИС-3", count: 1, rubles: 998.4 },
-  { name: "Объект 277", count: 1, rubles: 2_379 },
-  { name: "Т-62А", count: 1, rubles: 1_390.35 },
-  { name: "ИС-4", count: 1, rubles: 2_379 },
-  { name: "Т-34-85", count: 1, rubles: 528.84 },
-  { name: "КВ-1С", count: 1, rubles: 390.0 },
-  { name: "Т-44", count: 1, rubles: 1_050.6 },
+  { name: "ИС-7", count: 1, amount: 2_379 },
+  { name: "Объект 140", count: 1, amount: 2_379 },
+  { name: "Т-54", count: 1, amount: 1_390.35 },
+  { name: "ИС-3", count: 1, amount: 998.4 },
+  { name: "Объект 277", count: 1, amount: 2_379 },
+  { name: "Т-62А", count: 1, amount: 1_390.35 },
+  { name: "ИС-4", count: 1, amount: 2_379 },
+  { name: "Т-34-85", count: 1, amount: 528.84 },
+  { name: "КВ-1С", count: 1, amount: 390.0 },
+  { name: "Т-44", count: 1, amount: 1_050.6 },
 ];
 
 export function basketSummary(
@@ -44,38 +44,35 @@ export function basketSummary(
   return {
     name,
     count: lines.reduce((sum, line) => sum + line.count, 0),
-    rubles: lines.reduce((sum, line) => sum + line.rubles, 0),
+    amount: lines.reduce((sum, line) => sum + line.amount, 0),
   };
 }
 
 const allLines = [...currencies, ...premiumTanks, ...researchableTanks];
 
-export const sumRub = allLines.reduce((sum, line) => sum + line.rubles, 0);
+export const sumMoney = allLines.reduce((sum, line) => sum + line.amount, 0);
 
 export function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(value);
 }
 
 export type DisplayMoney = {
-  id: "rub" | "byn" | "usd";
+  id: "eur";
   label: string;
   symbol: string;
-  rubPerUnit: number;
 };
 
 export const DISPLAY_MONEY: DisplayMoney[] = [
-  { id: "rub", label: "рос. рубль", symbol: "₽", rubPerUnit: 1 },
-  { id: "byn", label: "бел. рубль", symbol: "Br", rubPerUnit: 28.1618 },
-  { id: "usd", label: "доллар", symbol: "$", rubPerUnit: 85.6007 },
+  { id: "eur", label: "евро", symbol: "€" },
 ];
 
-export function toDisplay(rubles: number, money: DisplayMoney): number {
-  return rubles / money.rubPerUnit;
+export function toDisplay(amount: number, _money: DisplayMoney): number {
+  return amount;
 }
 
 export const fixtureDump = {
   kicker,
-  sumRub,
+  sumMoney,
   currencyLines: currencies.length,
   premiumTanks: premiumTanks.length,
   researchableTanks: researchableTanks.length,

@@ -51,14 +51,14 @@ def signed_out() -> None:
     d.text((PAD, 1180), "Оценка", font=title, fill=FG)
     d.text(
         (PAD, 1310),
-        "Имущество аккаунта Мира танков\nв рублях.",
+        "Имущество аккаунта World of Tanks.",
         font=sub,
         fill=MUTED,
         spacing=8,
     )
     btn = (PAD, 1680, W - PAD, 1810)
     d.rounded_rectangle(btn, radius=42, fill=CTA_BG)
-    label = "Войти через Lesta"
+    label = "Войти"
     tw = text_width(d, label, cta)
     d.text(((W - tw) / 2, 1716), label, font=cta, fill=CTA_FG)
     save(img, "01-signed-out.png")
@@ -73,12 +73,12 @@ def valuation() -> None:
     dock_v = font(FONT_REG, 36)
     d.text((W - PAD - text_width(d, "Выйти", small), 72), "Выйти", font=small, fill=(201, 196, 182))
     d.text((PAD, 640), "ОЦЕНКА", font=kicker, fill=KICKER)
-    d.text((PAD, 700), "184 320,156 ₽", font=sum_f, fill=FG)
+    d.text((PAD, 700), "1 842,30 €", font=sum_f, fill=FG)
     d.line((PAD, 1540, W - PAD, 1540), fill=LINE, width=2)
     cols = [
         ("Танки", "87"),
-        ("Танки, ₽", "128 960,4 ₽"),
-        ("Прочее имущество", "55 359,756 ₽"),
+        ("Танки, €", "1 289,60 €"),
+        ("Прочее имущество", "552,70 €"),
     ]
     col_w = (W - 2 * PAD) / 3
     for i, (label, value) in enumerate(cols):
@@ -97,7 +97,7 @@ def waiting() -> None:
     d.text((PAD, 640), "ОЦЕНКА", font=kicker, fill=KICKER)
     d.rounded_rectangle((PAD, 720, PAD + 560, 850), radius=12, fill=PULSE)
     d.line((PAD, 1540, W - PAD, 1540), fill=LINE, width=2)
-    labels = ["Танки", "Танки, ₽", "Прочее имущество"]
+    labels = ["Танки", "Танки, €", "Прочее имущество"]
     col_w = (W - 2 * PAD) / 3
     for i, label in enumerate(labels):
         x = PAD + i * col_w
@@ -106,7 +106,7 @@ def waiting() -> None:
     save(img, "03-waiting.png")
 
 
-# Figma export: orange Lesta shield, ₽ as a knockout. Composite on black for Play.
+# Icon artwork composited on black for Play.
 ARTWORK = OUT / "icon-artwork.png"
 ICON_BG = (0, 0, 0)
 
@@ -139,7 +139,7 @@ def feature_graphic() -> None:
     title = font(FONT_SB, 64)
     sub = font(FONT_REG, 28)
     d.text((480, 160), "Оценка", font=title, fill=FG)
-    d.text((480, 250), "Имущество аккаунта\nМира танков в рублях", font=sub, fill=MUTED, spacing=6)
+    d.text((480, 250), "Имущество аккаунта\nWorld of Tanks", font=sub, fill=MUTED, spacing=6)
     path = OUT / "feature-graphic.png"
     img.save(path, "PNG")
     print(path)

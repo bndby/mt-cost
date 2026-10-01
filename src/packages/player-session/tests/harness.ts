@@ -5,36 +5,31 @@ import type {
   CustomTab,
   CustomTabResult,
   BoosterPrice,
-  LestaClient,
   PlayerSession,
+  Realm,
   Screen,
   VehiclePrice,
+  WgClient,
 } from "../index";
 
 export const APPLICATION_ID = "test-application-id";
-export const WG_APPLICATION_ID = "test-wg-application-id";
 
 export const SIGNED_OUT_SCREEN = {
   kind: "signed-out" as const,
   title: "Оценка" as const,
   subtitle: "Имущество танкового аккаунта.",
-  signInLabel: "Войти через Lesta",
-  wgSignInLabel: "Войти через WG",
+  signInLabel: "Войти" as const,
 };
 
 export const SESSION_RATES = {
   silverPerGold: 400,
-  goldPackGold: 50_000,
-  goldPackRubles: 7_800,
   goldPerBond: 1.6,
   freeXpPerGold: 25,
-  wgSilverPerGold: 400,
-  wgGoldPackGold: 50_000,
-  wgGoldPackUsd: 100,
-  wgGoldPerBond: 1.6,
-  wgFreeXpPerGold: 25,
-  rubPerByn: 28.1618,
-  rubPerUsd: 85.6007,
+  goldPacks: {
+    NA: { gold: 50_000, money: 100 },
+    EU: { gold: 50_000, money: 100 },
+    ASIA: { gold: 50_000, money: 100 },
+  },
 } as const;
 
 export class FakeClock implements Clock {
@@ -59,7 +54,7 @@ export class FakeCustomTab implements CustomTab {
   }
 }
 
-export class FakeLesta implements LestaClient {
+export class FakeWg implements WgClient {
   logoutCalls: string[] = [];
   prolongateResult:
     | { accessToken: string; expiresAt: number }
@@ -118,24 +113,21 @@ type AccountOrError = AccountSnapshot | Error;
 export function createHarness() {
   const clock = new FakeClock();
   const customTab = new FakeCustomTab();
-  const lesta = new FakeLesta();
-  const wg = new FakeLesta();
-  const wgRealms: string[] = [];
+  const wg = new FakeWg();
+  const wgRealms: Realm[] = [];
   const session = createPlayerSession({
     clock,
     customTab,
-    lesta,
     wgForRealm: (realm) => {
       wgRealms.push(realm);
       return wg;
     },
     config: {
-      applicationId: APPLICATION_ID,
-      wgApplicationId: WG_APPLICATION_ID,
+      wgApplicationId: APPLICATION_ID,
       ...SESSION_RATES,
     },
   });
-  return { session, clock, customTab, lesta, wg, wgRealms };
+  return { session, clock, customTab, wg, wgRealms };
 }
 
 export function waitForScreen(
