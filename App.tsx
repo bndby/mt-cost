@@ -1,14 +1,18 @@
 import Constants from "expo-constants";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { getLocales } from "expo-localization";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
 import { createExpoCustomTab } from "./src/adapters/expo-custom-tab";
 import { createHttpWg } from "./src/adapters/wg-http";
+import { readStoredLanguage, writeStoredLanguage } from "./src/adapters/language-file";
 import { systemClock } from "./src/adapters/system-clock";
 import { requiredApplicationId } from "./src/config/application-ids";
 import {
+  languageFromDevice,
   WG_API_ORIGINS,
   createPlayerSession,
   type GoldPack,
+  type LanguageId,
   type Realm,
 } from "./src/packages/player-session";
 import { AppChrome, PlayerScreen } from "./src/ui/PlayerScreen";
@@ -41,60 +45,80 @@ const wgApplicationId = requiredApplicationId(
 );
 
 export default function App() {
-  const session = useMemo(
-    () =>
-      createPlayerSession({
-        customTab: createExpoCustomTab(),
-        wgForRealm: (realm: Realm) =>
-          createHttpWg({
-            origin: WG_API_ORIGINS[realm],
-            applicationId: wgApplicationId,
-            fetch: globalThis.fetch.bind(globalThis),
-          }),
-        clock: systemClock,
-        config: {
-          wgApplicationId,
-          silverPerGold: snapshotNumber(
-            "WG_SILVER_PER_GOLD",
-            extra.silverPerGold,
+  const [language, setLanguage] = useState<LanguageId | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await readStoredLanguage();
+      const initial =
+        stored ??
+        languageFromDevice(getLocales().map((locale) => locale.languageTag));
+      if (!cancelled) setLanguage(initial);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const session = useMemo(() => {
+    if (!language) return null;
+    return createPlayerSession({
+      customTab: createExpoCustomTab(),
+      wgForRealm: (realm: Realm) =>
+        createHttpWg({
+          origin: WG_API_ORIGINS[realm],
+          applicationId: wgApplicationId,
+          fetch: globalThis.fetch.bind(globalThis),
+        }),
+      clock: systemClock,
+      language,
+      onLanguageChange: (next) => {
+        void writeStoredLanguage(next);
+      },
+      config: {
+        wgApplicationId,
+        silverPerGold: snapshotNumber(
+          "WG_SILVER_PER_GOLD",
+          extra.silverPerGold,
+        ),
+        goldPerBond: snapshotNumber("WG_GOLD_PER_BOND", extra.goldPerBond),
+        freeXpPerGold: snapshotNumber(
+          "WG_FREE_XP_PER_GOLD",
+          extra.freeXpPerGold,
+        ),
+        goldPacks: {
+          EU: goldPack(
+            "WG_EU_GOLD_PACK_GOLD",
+            extra.euGoldPackGold,
+            "WG_EU_GOLD_PACK_EUR",
+            extra.euGoldPackEur,
           ),
-          goldPerBond: snapshotNumber("WG_GOLD_PER_BOND", extra.goldPerBond),
-          freeXpPerGold: snapshotNumber(
-            "WG_FREE_XP_PER_GOLD",
-            extra.freeXpPerGold,
+          NA: goldPack(
+            "WG_NA_GOLD_PACK_GOLD",
+            extra.naGoldPackGold,
+            "WG_NA_GOLD_PACK_USD",
+            extra.naGoldPackUsd,
           ),
-          goldPacks: {
-            EU: goldPack(
-              "WG_EU_GOLD_PACK_GOLD",
-              extra.euGoldPackGold,
-              "WG_EU_GOLD_PACK_EUR",
-              extra.euGoldPackEur,
-            ),
-            NA: goldPack(
-              "WG_NA_GOLD_PACK_GOLD",
-              extra.naGoldPackGold,
-              "WG_NA_GOLD_PACK_USD",
-              extra.naGoldPackUsd,
-            ),
-            ASIA: goldPack(
-              "WG_ASIA_GOLD_PACK_GOLD",
-              extra.asiaGoldPackGold,
-              "WG_ASIA_GOLD_PACK_CNY",
-              extra.asiaGoldPackCny,
-            ),
-          },
+          ASIA: goldPack(
+            "WG_ASIA_GOLD_PACK_GOLD",
+            extra.asiaGoldPackGold,
+            "WG_ASIA_GOLD_PACK_CNY",
+            extra.asiaGoldPackCny,
+          ),
         },
-      }),
-    [],
-  );
+      },
+    });
+  }, [language]);
 
   const screen = useSyncExternalStore(
-    session.subscribe,
-    session.screen,
-    session.screen,
+    session?.subscribe ?? (() => () => {}),
+    () => session?.screen() ?? null,
+    () => session?.screen() ?? null,
   );
 
   useEffect(() => {
+    if (!session) return;
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") void session.onForeground();
     });
@@ -103,14 +127,19 @@ export default function App() {
 
   return (
     <AppChrome>
-      <PlayerScreen
-        screen={screen}
-        onSignIn={() => session.signIn()}
-        onChooseRealm={(key) => void session.chooseRealm(key)}
-        onBackFromRealm={() => session.backFromRealm()}
-        onSignOut={() => void session.signOut()}
-        onRetry={() => void session.retry()}
-      />
+      {session && screen ? (
+        <PlayerScreen
+          screen={screen}
+          onSignIn={() => session.signIn()}
+          onChooseRealm={(key) => void session.chooseRealm(key)}
+          onBackFromRealm={() => session.backFromRealm()}
+          onSignOut={() => void session.signOut()}
+          onRetry={() => void session.retry()}
+          onOpenSettings={() => session.openSettings()}
+          onCloseSettings={() => session.closeSettings()}
+          onChooseLanguage={(id) => session.setLanguage(id)}
+        />
+      ) : null}
     </AppChrome>
   );
 }

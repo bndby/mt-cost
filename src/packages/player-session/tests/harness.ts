@@ -19,6 +19,7 @@ export const SIGNED_OUT_SCREEN = {
   title: "Оценка" as const,
   subtitle: "Имущество танкового аккаунта.",
   signInLabel: "Войти" as const,
+  settingsLabel: "Настройки",
 };
 
 export const SESSION_RATES = {
@@ -73,6 +74,7 @@ export class FakeWg implements WgClient {
   clan: string | null | Error = null;
   clanGate: Promise<void> = Promise.resolve();
   clanCalls = 0;
+  encyclopediaLanguages: string[] = [];
 
   async logout(accessToken: string): Promise<void> {
     this.logoutCalls.push(accessToken);
@@ -90,12 +92,17 @@ export class FakeWg implements WgClient {
     return this.account;
   }
 
-  async fetchVehiclePrices(): Promise<VehiclePrice[]> {
+  async fetchVehiclePrices(
+    _tankIds: number[],
+    language = "en",
+  ): Promise<VehiclePrice[]> {
+    this.encyclopediaLanguages.push(language);
     if (this.vehicles instanceof Error) throw this.vehicles;
     return this.vehicles;
   }
 
-  async fetchBoosterPrices(): Promise<BoosterPrice[]> {
+  async fetchBoosterPrices(language = "en"): Promise<BoosterPrice[]> {
+    this.encyclopediaLanguages.push(language);
     if (this.boosterPrices instanceof Error) throw this.boosterPrices;
     return this.boosterPrices;
   }

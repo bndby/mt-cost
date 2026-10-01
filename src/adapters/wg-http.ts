@@ -152,12 +152,13 @@ export function createHttpWg(deps: {
       };
     },
 
-    async fetchVehiclePrices(tankIds): Promise<VehiclePrice[]> {
+    async fetchVehiclePrices(tankIds, language = "en"): Promise<VehiclePrice[]> {
       const prices: VehiclePrice[] = [];
       for (let i = 0; i < tankIds.length; i += 100) {
         const chunk = tankIds.slice(i, i + 100);
         const body = await getJson("/wot/encyclopedia/vehicles/", {
           tank_id: chunk.join(","),
+          language,
           fields: "tank_id,price_credit,price_gold,tier,is_premium,is_gift",
         });
         const data = asRecord(body.data);
@@ -180,8 +181,9 @@ export function createHttpWg(deps: {
       return prices;
     },
 
-    async fetchBoosterPrices(): Promise<BoosterPrice[]> {
+    async fetchBoosterPrices(language = "en"): Promise<BoosterPrice[]> {
       const body = await getJson("/wot/encyclopedia/boosters/", {
+        language,
         fields: "booster_id,price_gold,resource,lifetime,description",
       });
       const data = asRecord(body.data);

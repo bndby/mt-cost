@@ -96,6 +96,7 @@ describe("вход через WG: шаг выбора Реалма", () => {
     kicker: "Войти",
     title: "Выберите Реалм",
     backLabel: "Назад",
+    settingsLabel: "Настройки",
     realms: [
       { key: "NA" as const, selected: false },
       { key: "EU" as const, selected: false },
@@ -1164,5 +1165,96 @@ describe("вход через WG: Оценка", () => {
       ],
     });
     expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|access_token|code/);
+  });
+});
+
+describe("Язык", () => {
+  test("без входа смена Языка меняет подписи и не зовёт WG", () => {
+    const { session, wg } = createHarness();
+
+    session.setLanguage("en");
+
+    expect(session.screen()).toMatchObject({
+      kind: "signed-out",
+      title: "Valuation",
+      signInLabel: "Sign in",
+    });
+    expect(wg.encyclopediaLanguages).toEqual([]);
+  });
+
+  test("настройки открываются поверх экрана и назад возвращает его", () => {
+    const { session } = createHarness();
+
+    session.openSettings();
+    expect(session.screen().kind).toBe("settings");
+    session.setLanguage("de");
+    expect(session.screen()).toMatchObject({
+      kind: "settings",
+      title: "Einstellungen",
+    });
+    session.closeSettings();
+    expect(session.screen()).toMatchObject({
+      kind: "signed-out",
+      title: "Bewertung",
+    });
+  });
+
+  test("готовая Оценка запрашивает энциклопедию на новом Языке", async () => {
+    const { session, customTab, wg } = createHarness();
+    wg.account = {
+      silver: 0,
+      gold: 0,
+      bonds: 0,
+      premiumExpiresAt: null,
+      hangarTankIds: [1],
+      rented: [],
+    };
+    wg.vehicles = [
+      {
+        tankId: 1,
+        priceSilver: 400,
+        priceGold: 0,
+      },
+    ];
+    customTab.succeedWith(okCallback({}));
+    session.signIn();
+    await session.chooseRealm("EU");
+    await waitForScreen(
+      session,
+      (screen) => screen.kind === "valuation" && screen.snapshot.kind === "numbers",
+    );
+
+    session.setLanguage("ja");
+    const next = await waitForScreen(
+      session,
+      (screen) => screen.kind === "valuation" && screen.snapshot.kind === "numbers",
+    );
+
+    expect(wg.encyclopediaLanguages).toEqual(["ru", "en"]);
+    expect(next).toMatchObject({
+      signOutLabel: "ログアウト",
+      snapshot: { rows: [{ name: "戦車" }] },
+    });
+  });
+
+  test("ошибка Оценки переводит текст и не начинает новый сбор", async () => {
+    const { session, customTab, wg } = createHarness();
+    wg.account = new Error("down");
+    customTab.succeedWith(okCallback({}));
+    session.signIn();
+    await session.chooseRealm("EU");
+    await waitForScreen(
+      session,
+      (screen) => screen.kind === "valuation" && screen.snapshot.kind === "dashes",
+    );
+
+    session.setLanguage("en");
+
+    expect(session.screen()).toMatchObject({
+      kind: "valuation",
+      retryLabel: "Retry",
+      snapshot: { kind: "dashes" },
+    });
+    expect(wg.encyclopediaLanguages).toEqual([]);
   });
 });

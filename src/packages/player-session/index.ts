@@ -4,6 +4,12 @@ export {
   WG_API_ORIGINS,
   createPlayerSession,
 } from "./lib/session";
+export {
+  encyclopediaLanguage,
+  isLanguageId,
+  languageFromDevice,
+  LANGUAGES,
+} from "./lib/copy";
 export type {
   AccountSnapshot,
   BoosterPrice,
@@ -22,3 +28,4 @@ export type {
   VehiclePrice,
   WgClient,
 } from "./lib/session";
+export type { LanguageId } from "./lib/copy";

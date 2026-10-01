@@ -7,6 +7,7 @@ import type {
   RentedTank,
   VehiclePrice,
 } from "./session";
+import type { RowNames } from "./copy";
 
 export type ValuationRates = Pick<
   PlayerSessionConfig,
@@ -98,6 +99,16 @@ export function valueAccount(
   boosterPrices: BoosterPrice[],
   rates: ValuationRates,
   nowUnixSeconds: number,
+  names: RowNames = {
+    bonds: "Боны",
+    gold: "Золото",
+    silver: "Серебро",
+    freeXp: "Своб. опыт",
+    boosters: "Резервы",
+    premiumAccount: "Прем. акк",
+    premium: "Прем. танки",
+    researchable: "Танки",
+  },
 ): {
   heroAmount: number;
   rows: ColumnRow[];
@@ -140,56 +151,56 @@ export function valueAccount(
   pushRow(
     rows,
     "bonds",
-    "Боны",
+    names.bonds,
     account.bonds,
     moneyFromGold(account.bonds * rates.goldPerBond, rates),
   );
   pushRow(
     rows,
     "gold",
-    "Золото",
+    names.gold,
     account.gold,
     moneyFromGold(account.gold, rates),
   );
   pushRow(
     rows,
     "silver",
-    "Серебро",
+    names.silver,
     account.silver,
     moneyFromGold(account.silver / rates.silverPerGold, rates),
   );
   pushRow(
     rows,
     "freeXp",
-    "Своб. опыт",
+    names.freeXp,
     freeXp,
     moneyFromGold(freeXp / rates.freeXpPerGold, rates),
   );
   pushRow(
     rows,
     "boosters",
-    "Резервы",
+    names.boosters,
     boosterCount,
     moneyFromGold(boosterGold, rates),
   );
   pushRow(
     rows,
     "premiumAccount",
-    "Прем. акк",
+    names.premiumAccount,
     premiumAccount.days,
     moneyFromGold(premiumAccount.gold, rates),
   );
   pushRow(
     rows,
     "premium",
-    "Прем. танки",
+    names.premium,
     premiumCount,
     moneyFromGold(premiumGold, rates),
   );
   pushRow(
     rows,
     "researchable",
-    "Танки",
+    names.researchable,
     researchableCount,
     moneyFromGold(researchableSilver / rates.silverPerGold, rates),
   );

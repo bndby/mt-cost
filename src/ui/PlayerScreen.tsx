@@ -1,7 +1,7 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   SafeAreaProvider,
   SafeAreaView,
@@ -9,6 +9,7 @@ import {
 } from "react-native-safe-area-context";
 import type {
   ColumnRow,
+  LanguageId,
   Realm,
   Screen,
   ValuationSnapshot,
@@ -103,6 +104,18 @@ function ColumnLine({
   );
 }
 
+function GearButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <MaterialCommunityIcons name="cog" size={22} color="#c9c4b6" />
+    </Pressable>
+  );
+}
 function ChromeButton({
   icon,
   label,
@@ -149,6 +162,9 @@ export function PlayerScreen({
   onBackFromRealm,
   onSignOut,
   onRetry,
+  onOpenSettings,
+  onCloseSettings,
+  onChooseLanguage,
 }: {
   screen: Screen;
   onSignIn: () => void;
@@ -156,6 +172,9 @@ export function PlayerScreen({
   onBackFromRealm: () => void;
   onSignOut: () => void;
   onRetry: () => void;
+  onOpenSettings: () => void;
+  onCloseSettings: () => void;
+  onChooseLanguage: (id: LanguageId) => void;
 }) {
   if (isUiPrototype) {
     return (
@@ -169,7 +188,10 @@ export function PlayerScreen({
   if (screen.kind === "signed-out") {
     return (
       <View style={styles.body}>
-        <View style={styles.top} />
+        <View style={styles.top}>
+          <View />
+          <GearButton label={screen.settingsLabel} onPress={onOpenSettings} />
+        </View>
         <View style={styles.loginCopy}>
           <Text style={styles.title}>{screen.title}</Text>
           <Text style={styles.subtitle}>{screen.subtitle}</Text>
@@ -188,6 +210,7 @@ export function PlayerScreen({
           <Pressable onPress={onBackFromRealm} hitSlop={12}>
             <Text style={styles.textButton}>{screen.backLabel}</Text>
           </Pressable>
+          <GearButton label={screen.settingsLabel} onPress={onOpenSettings} />
         </View>
         <View style={styles.realmCopy}>
           <Text style={styles.kicker}>{screen.kicker}</Text>
@@ -215,6 +238,37 @@ export function PlayerScreen({
     );
   }
 
+  if (screen.kind === "settings") {
+    return (
+      <View style={styles.body}>
+        <View style={styles.top}>
+          <Pressable onPress={onCloseSettings} hitSlop={12}>
+            <Text style={styles.textButton}>{screen.backLabel}</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.realmTitle}>{screen.title}</Text>
+        <ScrollView contentContainerStyle={styles.languageList}>
+          {screen.languages.map((item) => (
+            <Pressable
+              key={item.id}
+              onPress={() => onChooseLanguage(item.id)}
+              style={[styles.languageRow, item.selected && styles.languageRowOn]}
+            >
+              <Text
+                style={[
+                  styles.languageLabel,
+                  item.selected && styles.languageLabelOn,
+                ]}
+              >
+                {item.native}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
   const symbol = screen.symbol;
 
   return (
@@ -229,11 +283,14 @@ export function PlayerScreen({
             />
           ) : null}
         </View>
-        <ChromeButton
-          icon="close"
-          label={screen.signOutLabel}
-          onPress={onSignOut}
-        />
+        <View style={styles.topRight}>
+          <GearButton label={screen.settingsLabel} onPress={onOpenSettings} />
+          <ChromeButton
+            icon="close"
+            label={screen.signOutLabel}
+            onPress={onSignOut}
+          />
+        </View>
       </View>
       <View style={styles.hero}>
         <Text style={styles.kicker}>{screen.kicker}</Text>
@@ -275,6 +332,11 @@ const styles = StyleSheet.create({
   topLeft: {
     minHeight: 36,
     justifyContent: "center",
+  },
+  topRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
   },
   loginCopy: {
     flex: 1,
@@ -343,6 +405,27 @@ const styles = StyleSheet.create({
   },
   realmChipLabelOn: {
     color: "#e7c46a",
+  },
+  languageList: {
+    gap: 8,
+    paddingBottom: 24,
+  },
+  languageRow: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: "#1a1d24",
+  },
+  languageRowOn: {
+    backgroundColor: "#2a2618",
+  },
+  languageLabel: {
+    color: "#f3f1ea",
+    fontSize: 16,
+  },
+  languageLabelOn: {
+    color: "#e7c46a",
+    fontWeight: "700",
   },
   textButton: {
     color: "#c9c4b6",

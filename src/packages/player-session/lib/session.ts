@@ -1,4 +1,11 @@
 import {
+  copy,
+  encyclopediaLanguage,
+  isLanguageId,
+  LANGUAGES,
+  type LanguageId,
+} from "./copy";
+import {
   WG_PREMIUM_PACKAGES,
   uniqueTankIds,
   valueAccount,
@@ -48,24 +55,33 @@ export type ValuationSnapshot =
 export type Screen =
   | {
       kind: "signed-out";
-      title: "Оценка";
-      subtitle: "Имущество танкового аккаунта.";
-      signInLabel: "Войти";
+      title: string;
+      subtitle: string;
+      signInLabel: string;
+      settingsLabel: string;
     }
   | {
       kind: "choose-realm";
-      kicker: "Войти";
-      title: "Выберите Реалм";
-      backLabel: "Назад";
+      kicker: string;
+      title: string;
+      backLabel: string;
+      settingsLabel: string;
       realms: { key: Realm; selected: boolean }[];
     }
   | {
       kind: "valuation";
-      signOutLabel: "Выйти";
-      retryLabel: "Повторить" | null;
+      signOutLabel: string;
+      retryLabel: string | null;
+      settingsLabel: string;
       kicker: string;
       symbol: string;
       snapshot: ValuationSnapshot;
+    }
+  | {
+      kind: "settings";
+      title: string;
+      backLabel: string;
+      languages: { id: LanguageId; native: string; selected: boolean }[];
     };
 
 export type CustomTabResult =
@@ -129,8 +145,8 @@ export type WgClient = {
     accessToken: string,
     accountId: number,
   ): Promise<AccountSnapshot>;
-  fetchVehiclePrices(tankIds: number[]): Promise<VehiclePrice[]>;
-  fetchBoosterPrices(): Promise<BoosterPrice[]>;
+  fetchVehiclePrices(tankIds: number[], language?: string): Promise<VehiclePrice[]>;
+  fetchBoosterPrices(language?: string): Promise<BoosterPrice[]>;
   fetchClanTag(accountId: number): Promise<string | null>;
 };
 
@@ -153,24 +169,33 @@ export type PlayerSession = {
   signIn(): void;
   chooseRealm(key: Realm): Promise<void>;
   backFromRealm(): void;
+  openSettings(): void;
+  closeSettings(): void;
+  setLanguage(id: LanguageId): void;
   signOut(): Promise<void>;
   retry(): Promise<void>;
   onForeground(): Promise<void>;
 };
 
-const SIGNED_OUT: Screen = {
-  kind: "signed-out",
-  title: "Оценка",
-  subtitle: "Имущество танкового аккаунта.",
-  signInLabel: "Войти",
-};
+function signedOutScreen(language: LanguageId): Screen {
+  const text = copy(language);
+  return {
+    kind: "signed-out",
+    title: text.title,
+    subtitle: text.subtitle,
+    signInLabel: text.signIn,
+    settingsLabel: text.settings,
+  };
+}
 
-function chooseRealmScreen(selected: Realm | null): Screen {
+function chooseRealmScreen(selected: Realm | null, language: LanguageId): Screen {
+  const text = copy(language);
   return {
     kind: "choose-realm",
-    kicker: "Войти",
-    title: "Выберите Реалм",
-    backLabel: "Назад",
+    kicker: text.realmKicker,
+    title: text.realmTitle,
+    backLabel: text.back,
+    settingsLabel: text.settings,
     realms: REALM_KEYS.map((key) => ({
       key,
       selected: key === selected,
@@ -230,9 +255,13 @@ export function createPlayerSession(deps: {
   wgForRealm: (realm: Realm) => WgClient;
   clock: Clock;
   config: PlayerSessionConfig;
+  language?: LanguageId;
+  onLanguageChange?: (language: LanguageId) => void;
 }): PlayerSession {
   const listeners = new Set<() => void>();
-  let screen: Screen = SIGNED_OUT;
+  let language: LanguageId = deps.language ?? "ru";
+  let settingsOpen = false;
+  let underlying: Screen = signedOutScreen(language);
   let auth: LiveAuth | null = null;
   let clanTag: string | null = null;
   let selectedRealm: Realm | null = null;
@@ -252,12 +281,27 @@ export function createPlayerSession(deps: {
     };
   }
 
+  function visible(): Screen {
+    if (!settingsOpen) return underlying;
+    const text = copy(language);
+    return {
+      kind: "settings",
+      title: text.settings,
+      backLabel: text.back,
+      languages: LANGUAGES.map((item) => ({
+        id: item.id,
+        native: item.native,
+        selected: item.id === language,
+      })),
+    };
+  }
+
   function emit() {
     for (const listener of listeners) listener();
   }
 
   function show(next: Screen) {
-    screen = next;
+    underlying = next;
     emit();
   }
 
@@ -267,7 +311,8 @@ export function createPlayerSession(deps: {
     clanTag = null;
     selectedRealm = null;
     client = null;
-    show(SIGNED_OUT);
+    settingsOpen = false;
+    show(signedOutScreen(language));
   }
 
   function kicker(): string {
@@ -299,12 +344,14 @@ export function createPlayerSession(deps: {
 
   function withValuation(
     snapshot: ValuationSnapshot,
-    retryLabel: "Повторить" | null,
+    retryLabel: string | null,
   ): Screen {
+    const text = copy(language);
     return {
       kind: "valuation",
-      signOutLabel: "Выйти",
+      signOutLabel: text.signOut,
       retryLabel,
+      settingsLabel: text.settings,
       kicker: kicker(),
       symbol: auth ? REALM_SYMBOL[auth.realm] : "€",
       snapshot,
@@ -319,8 +366,8 @@ export function createPlayerSession(deps: {
       const tag = await currentClient.fetchClanTag(current.accountId);
       if (!auth || auth.accountId !== current.accountId) return;
       clanTag = tag;
-      if (screen.kind === "valuation") {
-        show({ ...screen, kicker: kicker() });
+      if (underlying.kind === "valuation") {
+        show({ ...underlying, kicker: kicker() });
       }
     } catch {
       // Missing tag stays the nick; clan failure is not a failed Оценка.
@@ -328,11 +375,14 @@ export function createPlayerSession(deps: {
   }
 
   async function collect() {
-    if (!(await refreshAuth())) return;
     const current = auth;
     const currentClient = client;
     if (!current || !currentClient) return;
     const generation = ++collectGeneration;
+    const catalogLanguage = encyclopediaLanguage(language);
+    show(withValuation({ kind: "waiting" }, null));
+    if (!(await refreshAuth())) return;
+    if (generation !== collectGeneration || !auth) return;
     show(withValuation({ kind: "waiting" }, null));
     try {
       const account = await currentClient.fetchAccount(
@@ -344,7 +394,7 @@ export function createPlayerSession(deps: {
       const prices =
         tankIds.length === 0
           ? []
-          : await currentClient.fetchVehiclePrices(tankIds);
+          : await currentClient.fetchVehiclePrices(tankIds, catalogLanguage);
       if (generation !== collectGeneration || !auth) return;
       const ownedBoosters = (account.boosters ?? []).filter(
         (row) => row.state !== "USED" && row.count > 0,
@@ -352,7 +402,7 @@ export function createPlayerSession(deps: {
       const boosterPrices =
         ownedBoosters.length === 0
           ? []
-          : await currentClient.fetchBoosterPrices();
+          : await currentClient.fetchBoosterPrices(catalogLanguage);
       if (generation !== collectGeneration || !auth) return;
       const valued = valueAccount(
         account,
@@ -361,6 +411,7 @@ export function createPlayerSession(deps: {
         boosterPrices,
         valuationRates(),
         deps.clock.nowUnixSeconds,
+        copy(language).rows,
       );
       show(
         withValuation(
@@ -369,17 +420,17 @@ export function createPlayerSession(deps: {
             heroAmount: valued.heroAmount,
             rows: valued.rows,
           },
-          "Повторить",
+          copy(language).retry,
         ),
       );
     } catch {
       if (generation !== collectGeneration || !auth) return;
-      show(withValuation({ kind: "dashes" }, "Повторить"));
+      show(withValuation({ kind: "dashes" }, copy(language).retry));
     }
   }
 
   return {
-    screen: () => screen,
+    screen: () => visible(),
     subscribe(listener) {
       listeners.add(listener);
       return () => {
@@ -387,15 +438,15 @@ export function createPlayerSession(deps: {
       };
     },
     signIn() {
-      if (auth || screen.kind !== "signed-out") return;
+      if (auth || underlying.kind !== "signed-out") return;
       selectedRealm = null;
-      show(chooseRealmScreen(null));
+      show(chooseRealmScreen(null, language));
     },
     async chooseRealm(key) {
-      if (screen.kind !== "choose-realm") return;
+      if (underlying.kind !== "choose-realm") return;
       if (!REALM_KEYS.includes(key)) return;
       selectedRealm = key;
-      show(chooseRealmScreen(key));
+      show(chooseRealmScreen(key, language));
       const result = await deps.customTab.open(
         openIdLoginUrl(WG_API_ORIGINS[key], deps.config.wgApplicationId),
       );
@@ -405,9 +456,39 @@ export function createPlayerSession(deps: {
       beginLive(parsed, key);
     },
     backFromRealm() {
-      if (screen.kind !== "choose-realm") return;
+      if (underlying.kind !== "choose-realm") return;
       selectedRealm = null;
-      show(SIGNED_OUT);
+      show(signedOutScreen(language));
+    },
+    openSettings() {
+      if (settingsOpen) return;
+      settingsOpen = true;
+      emit();
+    },
+    closeSettings() {
+      if (!settingsOpen) return;
+      settingsOpen = false;
+      emit();
+    },
+    setLanguage(id) {
+      if (!isLanguageId(id) || id === language) return;
+      language = id;
+      deps.onLanguageChange?.(id);
+      if (underlying.kind === "signed-out") {
+        show(signedOutScreen(language));
+        return;
+      }
+      if (underlying.kind === "choose-realm") {
+        show(chooseRealmScreen(selectedRealm, language));
+        return;
+      }
+      if (underlying.kind === "valuation" && underlying.snapshot.kind === "dashes") {
+        show(withValuation(underlying.snapshot, copy(language).retry));
+        return;
+      }
+      if (underlying.kind === "valuation") {
+        void collect();
+      }
     },
     async signOut() {
       const token = auth?.accessToken;
@@ -417,7 +498,9 @@ export function createPlayerSession(deps: {
     },
     async retry() {
       if (!auth) return;
-      if (screen.kind === "valuation" && screen.snapshot.kind === "waiting") return;
+      if (underlying.kind === "valuation" && underlying.snapshot.kind === "waiting") {
+        return;
+      }
       await collect();
     },
     async onForeground() {

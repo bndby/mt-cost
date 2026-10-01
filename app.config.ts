@@ -35,6 +35,7 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
   },
   plugins: [
+    "expo-localization",
     "expo-web-browser",
     [
       "expo-build-properties",
