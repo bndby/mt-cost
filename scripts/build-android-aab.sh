@@ -13,7 +13,7 @@ if [[ -f .env ]]; then
 fi
 
 VERSION="$(node -p "require('./package.json').version")"
-OUT="$ROOT/mt-cost-${VERSION}.aab"
+OUT="$ROOT/wotcost-${VERSION}.aab"
 CREDENTIALS="$ROOT/credentials.json"
 
 if [[ ! -f "$CREDENTIALS" ]]; then

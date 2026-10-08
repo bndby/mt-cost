@@ -9,7 +9,7 @@ alwaysApply: true
 
 Команда: `npm run build:android` → `scripts/build-android-aab.sh`.
 
-Скрипт: `.env`, `expo prebuild -p android`, Play upload keystore из `credentials.json` (не debug.keystore), патч `signingConfigs.release` в сгенерированном `build.gradle`, `./gradlew :app:bundleRelease`, копия в `mt-cost-<version>.aab`.
+Скрипт: `.env`, `expo prebuild -p android`, Play upload keystore из `credentials.json` (не debug.keystore), патч `signingConfigs.release` в сгенерированном `build.gradle`, `./gradlew :app:bundleRelease`, копия в `wotcost-<version>.aab`.
 
 После сборки SHA1 сертификата AAB должен быть `EE:13:1B:7D:1F:B4:1F:88:4A:C9:38:D9:A9:D4:5D:CA:40:FC:A4:BF`. Отпечаток debug.keystore (`5E:8F:16:06:…`) Play отклоняет.
 

@@ -19,7 +19,7 @@ const privacyHtml = readFileSync(
 );
 
 describe("заглушка GitHub Pages", () => {
-  test("редиректит query на mtcost://auth/callback без экрана и без хранения токена", () => {
+  test("редиректит query на wotcost://auth/callback без экрана и без хранения токена", () => {
     expect(callbackHtml).toContain(CUSTOM_SCHEME_CALLBACK);
     expect(callbackHtml).toContain("location.replace");
     expect(callbackHtml).toContain("location.search");
@@ -41,7 +41,7 @@ describe("заглушка GitHub Pages", () => {
   test("политика говорит, что пароль не собирается и своего сервера нет", () => {
     expect(privacyHtml).toMatch(/WG OpenID/);
     expect(privacyHtml).toMatch(/не собирает/);
-    expect(privacyHtml).toMatch(/Своего сервера у WoT Cost нет/);
+    expect(privacyHtml).toMatch(/Своего сервера у wotcost нет/);
     expect(privacyHtml).toContain("https://bndby.github.io/mt-cost/auth/callback");
   });
 });

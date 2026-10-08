@@ -38,7 +38,7 @@ describe("не вошёл", () => {
       snapshot: { kind: "waiting" },
     });
     expect(JSON.stringify(session.screen())).not.toMatch(
-      /Оценка|WoT Cost|рос\. рубль|бел\. рубль/,
+      /Оценка|wotcost|WoT Cost|рос\. рубль|бел\. рубль/,
     );
     release();
   });
@@ -91,7 +91,7 @@ describe("вход через WG: шаг выбора Реалма", () => {
     expect(opened.searchParams.get("application_id")).toBe(APPLICATION_ID);
     expect(opened.searchParams.get("redirect_uri")).toBe(OPEN_ID_REDIRECT_URI);
     expect(opened.searchParams.get("display")).toBe("page");
-    expect(opened.searchParams.get("redirect_uri")).not.toContain("mtcost://");
+    expect(opened.searchParams.get("redirect_uri")).not.toContain("wotcost://");
   });
 
   test("отмена Custom Tab после выбора Реалма оставляет шаг с сохранённым выбором", async () => {
@@ -762,7 +762,7 @@ describe("кикер: ник и клан-тег", () => {
       kicker: "[EU] pLaYeR",
       snapshot: { kind: "waiting" },
     });
-    expect(JSON.stringify(session.screen())).not.toMatch(/Оценка|WoT Cost|PLAYER/);
+    expect(JSON.stringify(session.screen())).not.toMatch(/Оценка|wotcost|WoT Cost|PLAYER/);
     release();
   });
 

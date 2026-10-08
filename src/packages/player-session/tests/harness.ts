@@ -170,7 +170,7 @@ export function okCallback(params: {
     account_id: String(params.accountId ?? 42),
     nickname: params.nickname ?? "Player",
   });
-  return `mtcost://auth/callback?${search.toString()}`;
+  return `wotcost://auth/callback?${search.toString()}`;
 }
 
 export function errorCallback(message: string) {
@@ -179,5 +179,5 @@ export function errorCallback(message: string) {
     code: "401",
     message,
   });
-  return `mtcost://auth/callback?${search.toString()}`;
+  return `wotcost://auth/callback?${search.toString()}`;
 }

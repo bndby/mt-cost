@@ -13,14 +13,15 @@ function requiredApplicationId(
 
 const config: ExpoConfig = {
   name: "WoT Cost",
-  slug: "mt-cost",
+  slug: "wotcost",
   owner: "bndby",
-  scheme: "mtcost",
+  scheme: "wotcost",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
   ios: {
+    bundleIdentifier: "by.bnd.wotcost",
     supportsTablet: false,
   },
   android: {

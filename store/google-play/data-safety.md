@@ -4,7 +4,7 @@ Play Console → Политика приложения → Безопаснос�
 
 ## Собирает или передаёт данные?
 
-Да: передаёт данные **Wargaming** (хост выбранного Реалма: `api.worldoftanks.com`, `api.worldoftanks.eu` или `api.worldoftanks.asia`). Своего сервера нет — разработчик WoT Cost данные не собирает и не хранит.
+Да: передаёт данные **Wargaming** (хост выбранного Реалма: `api.worldoftanks.com`, `api.worldoftanks.eu` или `api.worldoftanks.asia`). Своего сервера нет — разработчик wotcost данные не собирает и не хранит.
 
 ## Типы данных
 

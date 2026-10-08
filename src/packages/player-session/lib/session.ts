@@ -13,7 +13,7 @@ import {
 
 export const OPEN_ID_REDIRECT_URI =
   "https://bndby.github.io/mt-cost/auth/callback";
-export const CUSTOM_SCHEME_CALLBACK = "mtcost://auth/callback";
+export const CUSTOM_SCHEME_CALLBACK = "wotcost://auth/callback";
 export const WG_API_ORIGINS = {
   NA: "https://api.worldoftanks.com",
   EU: "https://api.worldoftanks.eu",

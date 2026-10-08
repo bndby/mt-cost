@@ -186,7 +186,7 @@ finish() {
 
 TOTAL_STAGES=8
 
-banner "Релиз WoT Cost в Google Play"
+banner "Релиз wotcost в Google Play"
 
 # ── 1. Курс золота (человек сверяет витрину своего Реалма) ────────────────
 stage "Курс золота"
@@ -251,9 +251,9 @@ open_url "https://console.cloud.google.com/projectcreate"
 step "Создайте проект (или выберите уже существующий) и дождитесь, пока он станет активным."
 open_url "https://console.cloud.google.com/iam-admin/serviceaccounts"
 step "IAM & Admin → Service Accounts → Create Service Account."
-step "Name: mt-cost-play. Description: Play Console uploads for WoT Cost."
+step "Name: wotcost-play. Description: Play Console uploads for wotcost."
 step "Create and continue, роли не назначайте, Create and close."
-step "Скопируйте email вида mt-cost-play@….iam.gserviceaccount.com"
+step "Скопируйте email вида wotcost-play@….iam.gserviceaccount.com"
 ask GOOGLE_SERVICE_ACCOUNT_EMAIL "Вставьте email service account:"
 write_env GOOGLE_SERVICE_ACCOUNT_EMAIL "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
 step "У этой учётки: ⋮ → Manage keys → Add key → Create new key → JSON → Create."
@@ -276,7 +276,7 @@ step "Откройте Google Play Android Developer API и нажмите Enabl
 open_url "https://play.google.com/console/users-and-permissions"
 step "Users and permissions → Invite new users."
 step "Email: тот, что только что сохранили в GOOGLE_SERVICE_ACCOUNT_EMAIL"
-step "App permissions: выберите WoT Cost / эту карточку приложения."
+step "App permissions: выберите wotcost / эту карточку приложения."
 step "Поставьте: View app information (read-only); Edit and delete draft apps;"
 step "Release to production, exclude devices, and use Play App Signing;"
 step "Release apps to testing tracks; Manage testing tracks and edit tester lists;"
