@@ -16,6 +16,7 @@ import type {
 } from "../packages/player-session";
 import { isUiPrototype, ValuationPrototype } from "./prototype/ValuationPrototype";
 import { MoneyAmount } from "./MoneyAmount";
+import { RealmFlag } from "./RealmFlag";
 
 const COLUMN_GLYPH: Record<
   ColumnRow["line"],
@@ -157,9 +158,7 @@ function Column({ snapshot, symbol }: { snapshot: ValuationSnapshot; symbol: str
 
 export function PlayerScreen({
   screen,
-  onSignIn,
   onChooseRealm,
-  onBackFromRealm,
   onSignOut,
   onRetry,
   onOpenSettings,
@@ -167,9 +166,7 @@ export function PlayerScreen({
   onChooseLanguage,
 }: {
   screen: Screen;
-  onSignIn: () => void;
   onChooseRealm: (key: Realm) => void;
-  onBackFromRealm: () => void;
   onSignOut: () => void;
   onRetry: () => void;
   onOpenSettings: () => void;
@@ -185,54 +182,32 @@ export function PlayerScreen({
     );
   }
 
-  if (screen.kind === "signed-out") {
+  if (screen.kind === "choose-realm") {
     return (
       <View style={styles.body}>
         <View style={styles.top}>
           <View />
           <GearButton label={screen.settingsLabel} onPress={onOpenSettings} />
         </View>
-        <View style={styles.loginCopy}>
-          <Text style={styles.title}>{screen.title}</Text>
-          <Text style={styles.subtitle}>{screen.subtitle}</Text>
-        </View>
-        <Pressable style={styles.cta} onPress={onSignIn}>
-          <Text style={styles.ctaLabel}>{screen.signInLabel}</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  if (screen.kind === "choose-realm") {
-    return (
-      <View style={styles.body}>
-        <View style={styles.top}>
-          <Pressable onPress={onBackFromRealm} hitSlop={12}>
-            <Text style={styles.textButton}>{screen.backLabel}</Text>
-          </Pressable>
-          <GearButton label={screen.settingsLabel} onPress={onOpenSettings} />
-        </View>
-        <View style={styles.realmCopy}>
-          <Text style={styles.kicker}>{screen.kicker}</Text>
-          <Text style={styles.realmTitle}>{screen.title}</Text>
-          <View style={styles.realmRow}>
-            {screen.realms.map((realm) => (
-              <Pressable
-                key={realm.key}
-                onPress={() => onChooseRealm(realm.key)}
-                style={[styles.realmChip, realm.selected && styles.realmChipOn]}
-              >
-                <Text
-                  style={[
-                    styles.realmChipLabel,
-                    realm.selected && styles.realmChipLabelOn,
-                  ]}
-                >
-                  {realm.key}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        <Text style={styles.realmTitle}>{screen.title}</Text>
+        <View style={styles.realmStack}>
+          {screen.realms.map((realm) => (
+            <Pressable
+              key={realm.key}
+              accessibilityRole="button"
+              accessibilityLabel={`${realm.key}. ${realm.name}`}
+              accessibilityState={{ selected: realm.selected }}
+              onPress={() => onChooseRealm(realm.key)}
+              style={[styles.realmCard, realm.selected && styles.realmCardOn]}
+            >
+              <RealmFlag realm={realm.key} />
+              <View style={styles.realmScrim} />
+              <View style={styles.realmLabel}>
+                <Text style={styles.realmCode}>{realm.key}</Text>
+                <Text style={styles.realmName}>{realm.name}</Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
       </View>
     );
@@ -338,43 +313,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  loginCopy: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingBottom: 36,
-  },
-  title: {
-    color: "#f3f1ea",
-    fontSize: 40,
-    fontWeight: "600",
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#9a968c",
-    fontSize: 16,
-    lineHeight: 22,
-    maxWidth: 280,
-  },
-  cta: {
-    backgroundColor: "#e7c46a",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  ctaLabel: {
-    color: "#1a1408",
-    fontSize: 17,
-    fontWeight: "700",
-  },
   chromeButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-  },
-  realmCopy: {
-    flex: 1,
-    paddingTop: 8,
   },
   realmTitle: {
     color: "#f3f1ea",
@@ -382,29 +324,40 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 18,
   },
-  realmRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  realmChip: {
+  realmStack: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#9a968c",
+    gap: 10,
   },
-  realmChipOn: {
+  realmCard: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: "hidden",
     borderWidth: 2,
+    borderColor: "transparent",
+  },
+  realmCardOn: {
     borderColor: "#e7c46a",
   },
-  realmChipLabel: {
+  realmScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  realmLabel: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 14,
+  },
+  realmCode: {
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+  realmName: {
     color: "#f3f1ea",
     fontSize: 15,
-    fontWeight: "700",
-  },
-  realmChipLabelOn: {
-    color: "#e7c46a",
+    marginTop: 2,
   },
   languageList: {
     gap: 8,

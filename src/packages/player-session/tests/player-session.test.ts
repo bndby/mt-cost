@@ -5,7 +5,7 @@ import {
 } from "../index";
 import {
   APPLICATION_ID,
-  SIGNED_OUT_SCREEN,
+  CHOOSE_REALM_SCREEN,
   createHarness,
   errorCallback,
   okCallback,
@@ -13,19 +13,10 @@ import {
 } from "./harness";
 
 describe("не вошёл", () => {
-  test("первый запуск показывает «не вошёл» и не открывает Custom Tab", () => {
+  test("первый запуск показывает выбор Реалма и не открывает Custom Tab", () => {
     const { session, customTab } = createHarness();
 
-    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
-    expect(customTab.opened).toEqual([]);
-  });
-
-  test("нажатие входа открывает шаг Реалма и не открывает Custom Tab", async () => {
-    const { session, customTab } = createHarness();
-
-    session.signIn();
-
-    expect(session.screen().kind).toBe("choose-realm");
+    expect(session.screen()).toEqual(CHOOSE_REALM_SCREEN);
     expect(customTab.opened).toEqual([]);
   });
 
@@ -37,7 +28,6 @@ describe("не вошёл", () => {
     });
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
 
     expect(session.screen()).toMatchObject({
@@ -64,68 +54,32 @@ describe("не вошёл", () => {
     for (const nextResult of cases) {
       const { session, customTab } = createHarness();
       customTab.nextResult = nextResult;
-      session.signIn();
-    await session.chooseRealm("EU");
+      await session.chooseRealm("EU");
       const shown = session.screen();
       expect(shown.kind).toBe("choose-realm");
       expect(JSON.stringify(shown)).not.toMatch(/AUTH_|access_token/);
     }
   });
 
-  test("«Выйти» при живом токене возвращает «не вошёл» и забывает токен", async () => {
+  test("«Выйти» при живом токене возвращает выбор Реалма и забывает токен", async () => {
     const { session, customTab, wg } = createHarness();
     customTab.succeedWith(okCallback({ accessToken: "live-token" }));
-    session.signIn();
     await session.chooseRealm("EU");
     expect(session.screen().kind).toBe("valuation");
 
     await session.signOut();
 
-    expect(session.screen().kind).toBe("signed-out");
+    expect(session.screen()).toEqual(CHOOSE_REALM_SCREEN);
     expect(wg.logoutCalls).toEqual(["live-token"]);
     customTab.opened = [];
-    session.signIn();
     await session.chooseRealm("EU");
     expect(customTab.opened).toHaveLength(1);
   });
 });
 
 describe("вход через WG: шаг выбора Реалма", () => {
-  const CHOOSE_REALM = {
-    kind: "choose-realm" as const,
-    kicker: "Войти",
-    title: "Выберите Реалм",
-    backLabel: "Назад",
-    settingsLabel: "Настройки",
-    realms: [
-      { key: "NA" as const, selected: false },
-      { key: "EU" as const, selected: false },
-      { key: "ASIA" as const, selected: false },
-    ],
-  };
-
-  test("«Войти через WG» показывает шаг выбора Реалма и не открывает Custom Tab", () => {
-    const { session, customTab } = createHarness();
-
-    session.signIn();
-
-    expect(session.screen()).toEqual(CHOOSE_REALM);
-    expect(customTab.opened).toEqual([]);
-  });
-
-  test("«Назад» с шага Реалма возвращает «не вошёл» и сбрасывает выбор", () => {
-    const { session, customTab } = createHarness();
-    session.signIn();
-
-    session.backFromRealm();
-
-    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
-    expect(customTab.opened).toEqual([]);
-  });
-
   test("выбор Реалма открывает WG OpenID на хосте Реалма", async () => {
     const { session, customTab } = createHarness();
-    session.signIn();
 
     await session.chooseRealm("EU");
 
@@ -142,29 +96,17 @@ describe("вход через WG: шаг выбора Реалма", () => {
 
   test("отмена Custom Tab после выбора Реалма оставляет шаг с сохранённым выбором", async () => {
     const { session, customTab } = createHarness();
-    session.signIn();
     await session.chooseRealm("NA");
 
     expect(session.screen()).toEqual({
-      ...CHOOSE_REALM,
+      ...CHOOSE_REALM_SCREEN,
       realms: [
-        { key: "NA", selected: true },
-        { key: "EU", selected: false },
-        { key: "ASIA", selected: false },
+        { key: "NA", name: "Северная Америка", selected: true },
+        { key: "EU", name: "Европа", selected: false },
+        { key: "ASIA", name: "Азия", selected: false },
       ],
     });
     expect(customTab.opened).toHaveLength(1);
-  });
-
-  test("«Назад» после отмены на странице WG сбрасывает выбор полностью", async () => {
-    const { session } = createHarness();
-    session.signIn();
-    await session.chooseRealm("ASIA");
-
-    session.backFromRealm();
-    session.signIn();
-
-    expect(session.screen()).toEqual(CHOOSE_REALM);
   });
 });
 
@@ -187,7 +129,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     expect(session.screen()).toMatchObject({
       kind: "valuation",
@@ -235,7 +176,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -263,7 +203,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -291,7 +230,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -326,7 +264,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -361,7 +298,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -405,7 +341,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -442,7 +377,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -477,7 +411,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     };
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -503,7 +436,6 @@ describe("успешная Оценка: сумма и столбик", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -529,7 +461,6 @@ describe("мёртвый токен без устаревшей Оценки", (
     customTab.succeedWith(
       okCallback({ expiresAt: clock.nowUnixSeconds + 60 }),
     );
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -541,7 +472,7 @@ describe("мёртвый токен без устаревшей Оценки", (
     expect(session.screen().kind).toBe("valuation");
   });
 
-  test("истёкший токен без продления — «не вошёл» без кодов, чисел и автооткрытия Custom Tab", async () => {
+  test("истёкший токен без продления — выбор Реалма без кодов, чисел и автооткрытия Custom Tab", async () => {
     const { session, customTab, clock, wg } = createHarness();
     wg.account = {
       silver: 0,
@@ -556,7 +487,6 @@ describe("мёртвый токен без устаревшей Оценки", (
         expiresAt: clock.nowUnixSeconds + 10,
       }),
     );
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -572,7 +502,7 @@ describe("мёртвый токен без устаревшей Оценки", (
 
     await session.onForeground();
 
-    expect(session.screen()).toEqual(SIGNED_OUT_SCREEN);
+    expect(session.screen()).toEqual(CHOOSE_REALM_SCREEN);
     expect(JSON.stringify(session.screen())).not.toMatch(/AUTH_|access_token/);
     expect(customTab.opened).toEqual([]);
   });
@@ -597,7 +527,6 @@ describe("правила танков в Оценке", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -636,7 +565,6 @@ describe("правила танков в Оценке", () => {
     ];
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -661,7 +589,6 @@ describe("сбой сбора и повтор", () => {
     wg.account = new Error("ECONNRESET");
     customTab.succeedWith(okCallback());
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -686,7 +613,6 @@ describe("сбой сбора и повтор", () => {
     const { session, customTab, wg } = createHarness();
     wg.account = new Error("fail");
     customTab.succeedWith(okCallback());
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -735,7 +661,6 @@ describe("сбой сбора и повтор", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -778,7 +703,6 @@ describe("сбой сбора и повтор", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -809,7 +733,6 @@ describe("сбой сбора и повтор", () => {
     };
     wg.vehicles = new Error("vehicles");
     customTab.succeedWith(okCallback());
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -832,7 +755,6 @@ describe("кикер: ник и клан-тег", () => {
     });
     customTab.succeedWith(okCallback({ nickname: "pLaYeR" }));
 
-    session.signIn();
     await session.chooseRealm("EU");
 
     expect(session.screen()).toMatchObject({
@@ -849,7 +771,6 @@ describe("кикер: ник и клан-тег", () => {
     wg.clan = "xYz";
     customTab.succeedWith(okCallback({ nickname: "pLaYeR" }));
 
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -870,7 +791,6 @@ describe("кикер: ник и клан-тег", () => {
       releaseClan = resolve;
     });
     waiting.customTab.succeedWith(okCallback({ nickname: "Nick" }));
-    waiting.session.signIn();
     await waiting.session.chooseRealm("EU");
     expect(waiting.session.screen()).toMatchObject({
       kind: "valuation",
@@ -889,7 +809,6 @@ describe("кикер: ник и клан-тег", () => {
     const notInClan = createHarness();
     notInClan.wg.clan = null;
     notInClan.customTab.succeedWith(okCallback({ nickname: "Solo" }));
-    notInClan.session.signIn();
     await notInClan.session.chooseRealm("EU");
     await waitForScreen(
       notInClan.session,
@@ -904,7 +823,6 @@ describe("кикер: ник и клан-тег", () => {
     const failed = createHarness();
     failed.wg.clan = new Error("clan");
     failed.customTab.succeedWith(okCallback({ nickname: "Solo" }));
-    failed.session.signIn();
     await failed.session.chooseRealm("EU");
     await waitForScreen(
       failed.session,
@@ -932,7 +850,6 @@ describe("кикер: ник и клан-тег", () => {
       rented: [],
     };
     customTab.succeedWith(okCallback());
-    session.signIn();
     await session.chooseRealm("EU");
     const screen = await waitForScreen(
       session,
@@ -949,7 +866,6 @@ describe("кикер: ник и клан-тег", () => {
     const { session, customTab, wg } = createHarness();
     wg.clan = "RED";
     customTab.succeedWith(okCallback({ nickname: "Ace" }));
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -974,7 +890,6 @@ describe("вход через WG: Оценка", () => {
     realm: "NA" | "EU" | "ASIA" = "EU",
   ) {
     harness.customTab.succeedWith(okCallback());
-    harness.session.signIn();
     await harness.session.chooseRealm(realm);
   }
 
@@ -1125,7 +1040,6 @@ describe("вход через WG: Оценка", () => {
     const harness = createHarness();
     harness.wg.clan = "RED";
     harness.customTab.succeedWith(okCallback({ nickname: "Ace" }));
-    harness.session.signIn();
     await harness.session.chooseRealm("NA");
     const screen = await waitForScreen(
       harness.session,
@@ -1137,19 +1051,17 @@ describe("вход через WG: Оценка", () => {
   test("«Выйти» вызывает logout клиента Реалма", async () => {
     const harness = createHarness();
     harness.customTab.succeedWith(okCallback({ accessToken: "wg-token" }));
-    harness.session.signIn();
     await harness.session.chooseRealm("ASIA");
     await waitForScreen(harness.session, (s) => s.kind === "valuation");
 
     await harness.session.signOut();
 
-    expect(harness.session.screen()).toEqual(SIGNED_OUT_SCREEN);
+    expect(harness.session.screen()).toEqual(CHOOSE_REALM_SCREEN);
     expect(harness.wg.logoutCalls).toEqual(["wg-token"]);
   });
 
   test("срыв WG OpenID (AUTH_*) оставляет шаг Реалма без кодов", async () => {
     const { session, customTab } = createHarness();
-    session.signIn();
     customTab.nextResult = {
       type: "success",
       url: errorCallback("AUTH_CANCEL"),
@@ -1175,9 +1087,13 @@ describe("Язык", () => {
     session.setLanguage("en");
 
     expect(session.screen()).toMatchObject({
-      kind: "signed-out",
-      title: "Valuation",
-      signInLabel: "Sign in",
+      kind: "choose-realm",
+      title: "Choose a realm",
+      realms: [
+        { key: "NA", name: "North America" },
+        { key: "EU", name: "Europe" },
+        { key: "ASIA", name: "Asia" },
+      ],
     });
     expect(wg.encyclopediaLanguages).toEqual([]);
   });
@@ -1194,8 +1110,13 @@ describe("Язык", () => {
     });
     session.closeSettings();
     expect(session.screen()).toMatchObject({
-      kind: "signed-out",
-      title: "Bewertung",
+      kind: "choose-realm",
+      title: "Realm wählen",
+      realms: [
+        { key: "NA", name: "Nordamerika" },
+        { key: "EU", name: "Europa" },
+        { key: "ASIA", name: "Asien" },
+      ],
     });
   });
 
@@ -1217,7 +1138,6 @@ describe("Язык", () => {
       },
     ];
     customTab.succeedWith(okCallback({}));
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,
@@ -1241,7 +1161,6 @@ describe("Язык", () => {
     const { session, customTab, wg } = createHarness();
     wg.account = new Error("down");
     customTab.succeedWith(okCallback({}));
-    session.signIn();
     await session.chooseRealm("EU");
     await waitForScreen(
       session,

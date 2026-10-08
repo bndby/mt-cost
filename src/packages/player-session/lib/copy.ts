@@ -74,11 +74,8 @@ export function languageFromDevice(tags: readonly string[]): LanguageId {
 export type RowNames = Record<ColumnRow["line"], string>;
 
 export type Copy = {
-  title: string;
-  subtitle: string;
-  signIn: string;
-  realmKicker: string;
   realmTitle: string;
+  realms: Record<"NA" | "EU" | "ASIA", string>;
   back: string;
   signOut: string;
   retry: string;
@@ -88,11 +85,8 @@ export type Copy = {
 
 const COPY: Record<LanguageId, Copy> = {
   ru: {
-    title: "Оценка",
-    subtitle: "Имущество танкового аккаунта.",
-    signIn: "Войти",
-    realmKicker: "Войти",
     realmTitle: "Выберите Реалм",
+    realms: { NA: "Северная Америка", EU: "Европа", ASIA: "Азия" },
     back: "Назад",
     signOut: "Выйти",
     retry: "Повторить",
@@ -109,11 +103,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   en: {
-    title: "Valuation",
-    subtitle: "Tank account property.",
-    signIn: "Sign in",
-    realmKicker: "Sign in",
     realmTitle: "Choose a realm",
+    realms: { NA: "North America", EU: "Europe", ASIA: "Asia" },
     back: "Back",
     signOut: "Sign out",
     retry: "Retry",
@@ -130,11 +121,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   de: {
-    title: "Bewertung",
-    subtitle: "Besitz des Panzerkontos.",
-    signIn: "Anmelden",
-    realmKicker: "Anmelden",
     realmTitle: "Realm wählen",
+    realms: { NA: "Nordamerika", EU: "Europa", ASIA: "Asien" },
     back: "Zurück",
     signOut: "Abmelden",
     retry: "Wiederholen",
@@ -151,11 +139,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   fr: {
-    title: "Estimation",
-    subtitle: "Biens du compte de chars.",
-    signIn: "Connexion",
-    realmKicker: "Connexion",
     realmTitle: "Choisir un royaume",
+    realms: { NA: "Amérique du Nord", EU: "Europe", ASIA: "Asie" },
     back: "Retour",
     signOut: "Déconnexion",
     retry: "Réessayer",
@@ -172,11 +157,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   pl: {
-    title: "Wycena",
-    subtitle: "Majątek konta czołgów.",
-    signIn: "Zaloguj",
-    realmKicker: "Zaloguj",
     realmTitle: "Wybierz realm",
+    realms: { NA: "Ameryka Północna", EU: "Europa", ASIA: "Azja" },
     back: "Wstecz",
     signOut: "Wyloguj",
     retry: "Ponów",
@@ -193,11 +175,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   cs: {
-    title: "Odhad",
-    subtitle: "Majetek tankového účtu.",
-    signIn: "Přihlásit",
-    realmKicker: "Přihlásit",
     realmTitle: "Vyberte realm",
+    realms: { NA: "Severní Amerika", EU: "Evropa", ASIA: "Asie" },
     back: "Zpět",
     signOut: "Odhlásit",
     retry: "Znovu",
@@ -214,11 +193,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   es: {
-    title: "Valoración",
-    subtitle: "Bienes de la cuenta de tanques.",
-    signIn: "Entrar",
-    realmKicker: "Entrar",
     realmTitle: "Elige un reino",
+    realms: { NA: "Norteamérica", EU: "Europa", ASIA: "Asia" },
     back: "Atrás",
     signOut: "Salir",
     retry: "Reintentar",
@@ -235,11 +211,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   tr: {
-    title: "Değerleme",
-    subtitle: "Tank hesabının varlığı.",
-    signIn: "Giriş",
-    realmKicker: "Giriş",
     realmTitle: "Realm seçin",
+    realms: { NA: "Kuzey Amerika", EU: "Avrupa", ASIA: "Asya" },
     back: "Geri",
     signOut: "Çıkış",
     retry: "Yeniden",
@@ -256,11 +229,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   uk: {
-    title: "Оцінка",
-    subtitle: "Майно танкового акаунта.",
-    signIn: "Увійти",
-    realmKicker: "Увійти",
     realmTitle: "Оберіть реалм",
+    realms: { NA: "Північна Америка", EU: "Європа", ASIA: "Азія" },
     back: "Назад",
     signOut: "Вийти",
     retry: "Повторити",
@@ -277,11 +247,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   it: {
-    title: "Valutazione",
-    subtitle: "Beni dell'account carri.",
-    signIn: "Accedi",
-    realmKicker: "Accedi",
     realmTitle: "Scegli il reame",
+    realms: { NA: "America del Nord", EU: "Europa", ASIA: "Asia" },
     back: "Indietro",
     signOut: "Esci",
     retry: "Riprova",
@@ -298,11 +265,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   nl: {
-    title: "Schatting",
-    subtitle: "Bezit van het tankaccount.",
-    signIn: "Inloggen",
-    realmKicker: "Inloggen",
     realmTitle: "Kies een realm",
+    realms: { NA: "Noord-Amerika", EU: "Europa", ASIA: "Azië" },
     back: "Terug",
     signOut: "Uitloggen",
     retry: "Opnieuw",
@@ -319,11 +283,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   fi: {
-    title: "Arvio",
-    subtitle: "Tankkitilin omaisuus.",
-    signIn: "Kirjaudu",
-    realmKicker: "Kirjaudu",
     realmTitle: "Valitse realm",
+    realms: { NA: "Pohjois-Amerikka", EU: "Eurooppa", ASIA: "Aasia" },
     back: "Takaisin",
     signOut: "Kirjaudu ulos",
     retry: "Yritä uudelleen",
@@ -340,11 +301,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   hu: {
-    title: "Értékelés",
-    subtitle: "A tankfiók vagyona.",
-    signIn: "Belépés",
-    realmKicker: "Belépés",
     realmTitle: "Válassz realmet",
+    realms: { NA: "Észak-Amerika", EU: "Európa", ASIA: "Ázsia" },
     back: "Vissza",
     signOut: "Kilépés",
     retry: "Újra",
@@ -361,11 +319,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   ro: {
-    title: "Evaluare",
-    subtitle: "Bunurile contului de tancuri.",
-    signIn: "Intră",
-    realmKicker: "Intră",
     realmTitle: "Alege realm-ul",
+    realms: { NA: "America de Nord", EU: "Europa", ASIA: "Asia" },
     back: "Înapoi",
     signOut: "Ieși",
     retry: "Reîncearcă",
@@ -382,11 +337,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   sv: {
-    title: "Värdering",
-    subtitle: "Pansarkontots egendom.",
-    signIn: "Logga in",
-    realmKicker: "Logga in",
     realmTitle: "Välj en realm",
+    realms: { NA: "Nordamerika", EU: "Europa", ASIA: "Asien" },
     back: "Tillbaka",
     signOut: "Logga ut",
     retry: "Försök igen",
@@ -403,11 +355,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   "pt-BR": {
-    title: "Avaliação",
-    subtitle: "Bens da conta de tanques.",
-    signIn: "Entrar",
-    realmKicker: "Entrar",
     realmTitle: "Escolha o reino",
+    realms: { NA: "América do Norte", EU: "Europa", ASIA: "Ásia" },
     back: "Voltar",
     signOut: "Sair",
     retry: "Tentar de novo",
@@ -424,11 +373,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   ja: {
-    title: "評価",
-    subtitle: "戦車アカウントの財産。",
-    signIn: "ログイン",
-    realmKicker: "ログイン",
     realmTitle: "レルムを選択",
+    realms: { NA: "北アメリカ", EU: "ヨーロッパ", ASIA: "アジア" },
     back: "戻る",
     signOut: "ログアウト",
     retry: "再試行",
@@ -445,11 +391,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   ko: {
-    title: "평가",
-    subtitle: "전차 계정의 재산.",
-    signIn: "로그인",
-    realmKicker: "로그인",
     realmTitle: "렐름 선택",
+    realms: { NA: "북아메리카", EU: "유럽", ASIA: "아시아" },
     back: "뒤로",
     signOut: "로그아웃",
     retry: "다시 시도",
@@ -466,11 +409,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   "zh-CN": {
-    title: "估价",
-    subtitle: "坦克账号的财产。",
-    signIn: "登录",
-    realmKicker: "登录",
     realmTitle: "选择区服",
+    realms: { NA: "北美洲", EU: "欧洲", ASIA: "亚洲" },
     back: "返回",
     signOut: "退出",
     retry: "重试",
@@ -487,11 +427,8 @@ const COPY: Record<LanguageId, Copy> = {
     },
   },
   "zh-TW": {
-    title: "估價",
-    subtitle: "戰車帳號的財產。",
-    signIn: "登入",
-    realmKicker: "登入",
     realmTitle: "選擇區服",
+    realms: { NA: "北美洲", EU: "歐洲", ASIA: "亞洲" },
     back: "返回",
     signOut: "登出",
     retry: "重試",

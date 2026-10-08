@@ -14,12 +14,15 @@ import type {
 
 export const APPLICATION_ID = "test-application-id";
 
-export const SIGNED_OUT_SCREEN = {
-  kind: "signed-out" as const,
-  title: "Оценка" as const,
-  subtitle: "Имущество танкового аккаунта.",
-  signInLabel: "Войти" as const,
+export const CHOOSE_REALM_SCREEN = {
+  kind: "choose-realm" as const,
+  title: "Выберите Реалм",
   settingsLabel: "Настройки",
+  realms: [
+    { key: "NA" as const, name: "Северная Америка", selected: false },
+    { key: "EU" as const, name: "Европа", selected: false },
+    { key: "ASIA" as const, name: "Азия", selected: false },
+  ],
 };
 
 export const SESSION_RATES = {

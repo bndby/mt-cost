@@ -54,19 +54,10 @@ export type ValuationSnapshot =
 
 export type Screen =
   | {
-      kind: "signed-out";
-      title: string;
-      subtitle: string;
-      signInLabel: string;
-      settingsLabel: string;
-    }
-  | {
       kind: "choose-realm";
-      kicker: string;
       title: string;
-      backLabel: string;
       settingsLabel: string;
-      realms: { key: Realm; selected: boolean }[];
+      realms: { key: Realm; name: string; selected: boolean }[];
     }
   | {
       kind: "valuation";
@@ -166,9 +157,7 @@ export type PlayerSessionConfig = {
 export type PlayerSession = {
   screen(): Screen;
   subscribe(listener: () => void): () => void;
-  signIn(): void;
   chooseRealm(key: Realm): Promise<void>;
-  backFromRealm(): void;
   openSettings(): void;
   closeSettings(): void;
   setLanguage(id: LanguageId): void;
@@ -177,27 +166,15 @@ export type PlayerSession = {
   onForeground(): Promise<void>;
 };
 
-function signedOutScreen(language: LanguageId): Screen {
-  const text = copy(language);
-  return {
-    kind: "signed-out",
-    title: text.title,
-    subtitle: text.subtitle,
-    signInLabel: text.signIn,
-    settingsLabel: text.settings,
-  };
-}
-
 function chooseRealmScreen(selected: Realm | null, language: LanguageId): Screen {
   const text = copy(language);
   return {
     kind: "choose-realm",
-    kicker: text.realmKicker,
     title: text.realmTitle,
-    backLabel: text.back,
     settingsLabel: text.settings,
     realms: REALM_KEYS.map((key) => ({
       key,
+      name: text.realms[key],
       selected: key === selected,
     })),
   };
@@ -261,7 +238,7 @@ export function createPlayerSession(deps: {
   const listeners = new Set<() => void>();
   let language: LanguageId = deps.language ?? "ru";
   let settingsOpen = false;
-  let underlying: Screen = signedOutScreen(language);
+  let underlying: Screen = chooseRealmScreen(null, language);
   let auth: LiveAuth | null = null;
   let clanTag: string | null = null;
   let selectedRealm: Realm | null = null;
@@ -312,7 +289,7 @@ export function createPlayerSession(deps: {
     selectedRealm = null;
     client = null;
     settingsOpen = false;
-    show(signedOutScreen(language));
+    show(chooseRealmScreen(null, language));
   }
 
   function kicker(): string {
@@ -437,11 +414,6 @@ export function createPlayerSession(deps: {
         listeners.delete(listener);
       };
     },
-    signIn() {
-      if (auth || underlying.kind !== "signed-out") return;
-      selectedRealm = null;
-      show(chooseRealmScreen(null, language));
-    },
     async chooseRealm(key) {
       if (underlying.kind !== "choose-realm") return;
       if (!REALM_KEYS.includes(key)) return;
@@ -454,11 +426,6 @@ export function createPlayerSession(deps: {
       const parsed = parseCallback(result.url);
       if (parsed === "rejected") return;
       beginLive(parsed, key);
-    },
-    backFromRealm() {
-      if (underlying.kind !== "choose-realm") return;
-      selectedRealm = null;
-      show(signedOutScreen(language));
     },
     openSettings() {
       if (settingsOpen) return;
@@ -474,10 +441,6 @@ export function createPlayerSession(deps: {
       if (!isLanguageId(id) || id === language) return;
       language = id;
       deps.onLanguageChange?.(id);
-      if (underlying.kind === "signed-out") {
-        show(signedOutScreen(language));
-        return;
-      }
       if (underlying.kind === "choose-realm") {
         show(chooseRealmScreen(selectedRealm, language));
         return;

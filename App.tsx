@@ -130,9 +130,7 @@ export default function App() {
       {session && screen ? (
         <PlayerScreen
           screen={screen}
-          onSignIn={() => session.signIn()}
           onChooseRealm={(key) => void session.chooseRealm(key)}
-          onBackFromRealm={() => session.backFromRealm()}
           onSignOut={() => void session.signOut()}
           onRetry={() => void session.retry()}
           onOpenSettings={() => session.openSettings()}
