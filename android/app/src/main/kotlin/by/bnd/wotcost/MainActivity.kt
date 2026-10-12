@@ -49,19 +49,25 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val session = model.session
             var theme by remember { mutableStateOf(session.themePreference()) }
+            var onCover by remember { mutableStateOf(session.screen() is Screen.ChooseRealm) }
             DisposableEffect(session) {
-                val unsubscribe = session.subscribe { theme = session.themePreference() }
+                val unsubscribe = session.subscribe {
+                    theme = session.themePreference()
+                    onCover = session.screen() is Screen.ChooseRealm
+                }
                 onDispose { unsubscribe() }
             }
             val dark = theme.resolvesDark(isSystemInDarkTheme())
             SideEffect {
                 val transparent = android.graphics.Color.TRANSPARENT
-                val style = if (dark) {
+                val bars = if (dark) {
                     SystemBarStyle.dark(transparent)
                 } else {
                     SystemBarStyle.light(transparent, transparent)
                 }
-                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                val status = if (onCover) SystemBarStyle.light(transparent, transparent) else bars
+                val navigation = if (onCover) SystemBarStyle.dark(transparent) else bars
+                enableEdgeToEdge(statusBarStyle = status, navigationBarStyle = navigation)
                 AuthBridge.darkChrome = dark
             }
             WotCostTheme(theme) {

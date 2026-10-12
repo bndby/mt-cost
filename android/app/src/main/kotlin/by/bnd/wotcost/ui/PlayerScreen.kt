@@ -5,13 +5,16 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,21 +39,25 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import by.bnd.wotcost.R
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -111,108 +118,103 @@ private fun ChooseRealm(
     onChooseRealm: (Realm) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = screen.settingsLabel)
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        BoxWithConstraints(
+    val ink = Color.White
+    val inkMuted = Color.White.copy(alpha = 0.78f)
+    Box(Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(R.drawable.gate_cover),
+            contentDescription = null,
+            alignment = Alignment.CenterEnd,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
             Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.35f),
+                        0.22f to Color.Transparent,
+                        0.46f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.72f),
+                    ),
+                ),
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
-            val viewport = maxHeight
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                RealmGate(
-                    viewport = viewport,
-                    screen = screen,
-                    onChooseRealm = onChooseRealm,
-                )
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = screen.settingsLabel,
+                        tint = ink,
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun RealmGate(
-    viewport: Dp,
-    screen: Screen.ChooseRealm,
-    onChooseRealm: (Realm) -> Unit,
-) {
-    Layout(
-        content = {
-            TankSilhouette()
-            Column(Modifier.fillMaxWidth()) {
-                Text(
-                    screen.headline,
-                    style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-                Text(
-                    screen.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp),
-                )
-                SectionTitle(screen.title)
-                Column(Modifier.selectableGroup()) {
-                    screen.realms.forEach { realm ->
-                        ListItem(
-                            headlineContent = {
-                                Text(realm.key.name, style = MaterialTheme.typography.titleLarge)
-                            },
-                            supportingContent = { Text(realm.name) },
-                            leadingContent = {
-                                RealmFlag(
-                                    realm.key,
-                                    Modifier.size(width = 48.dp, height = 32.dp),
-                                )
-                            },
-                            trailingContent = {
-                                RadioButton(selected = realm.selected, onClick = null)
-                            },
-                            modifier = Modifier.clickable(role = Role.RadioButton) {
-                                onChooseRealm(realm.key)
-                            },
-                        )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                Column(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        screen.headline,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = ink,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    Text(
+                        screen.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = inkMuted,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp),
+                    )
+                    Text(
+                        screen.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = ink,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                    Column(Modifier.selectableGroup()) {
+                        screen.realms.forEach { realm ->
+                            ListItem(
+                                headlineContent = {
+                                    Text(realm.key.name, style = MaterialTheme.typography.titleLarge)
+                                },
+                                supportingContent = { Text(realm.name) },
+                                leadingContent = {
+                                    RealmFlag(
+                                        realm.key,
+                                        Modifier.size(width = 48.dp, height = 32.dp),
+                                    )
+                                },
+                                trailingContent = {
+                                    RadioButton(
+                                        selected = realm.selected,
+                                        onClick = null,
+                                        colors = RadioButtonDefaults.colors(
+                                            selectedColor = ink,
+                                            unselectedColor = inkMuted,
+                                        ),
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    headlineColor = ink,
+                                    supportingColor = inkMuted,
+                                ),
+                                modifier = Modifier.clickable(role = Role.RadioButton) {
+                                    onChooseRealm(realm.key)
+                                },
+                            )
+                        }
                     }
                 }
             }
-        },
-    ) { measurables, constraints ->
-        val bottom = measurables[1].measure(
-            constraints.copy(minWidth = constraints.maxWidth, minHeight = 0, maxHeight = Constraints.Infinity),
-        )
-        val space = (viewport.roundToPx() - bottom.height).coerceAtLeast(0)
-        val maxGraphicHeight = minOf(220.dp.roundToPx(), space)
-        val maxGraphicWidth = (constraints.maxWidth - 32.dp.roundToPx() * 2).coerceAtLeast(0)
-        var graphicWidth = maxGraphicWidth
-        var graphicHeight = (graphicWidth / TankSilhouetteAspect).toInt()
-        if (graphicHeight > maxGraphicHeight) {
-            graphicHeight = maxGraphicHeight
-            graphicWidth = (graphicHeight * TankSilhouetteAspect).toInt().coerceAtMost(maxGraphicWidth)
-        }
-        val graphic = measurables[0].measure(
-            Constraints.fixed(graphicWidth.coerceAtLeast(0), graphicHeight.coerceAtLeast(0)),
-        )
-        val height = maxOf(viewport.roundToPx(), bottom.height)
-        layout(constraints.maxWidth, height) {
-            graphic.place(
-                x = (constraints.maxWidth - graphic.width) / 2,
-                y = ((space - graphic.height) / 2).coerceAtLeast(0),
-            )
-            bottom.place(0, space)
         }
     }
 }
