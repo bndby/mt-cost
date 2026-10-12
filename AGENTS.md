@@ -14,4 +14,4 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 ### Android AAB
 
-Play App Bundle is a host Gradle build (`scripts/build-android-aab.sh`). A push builds a debug APK in GitHub Actions; a push to `master` also publishes the AAB to Play closed testing. Rule: `.cursor/rules/android-aab-gradle.mdc`.
+Play App Bundle is a host Gradle build (`scripts/build-android-aab.sh`). A push builds a debug APK in GitHub Actions; a push to `master` also builds a signed AAB artifact and does not upload it to Play. Rule: `.cursor/rules/android-aab-gradle.mdc`.

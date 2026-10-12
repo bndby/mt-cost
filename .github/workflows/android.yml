@@ -1,5 +1,5 @@
 # Every push: unit tests, then a debug APK artifact.
-# Push to master: after that, a signed AAB rolled out to Play closed testing (track alpha).
+# Push to master: after that, a signed AAB artifact. It is not uploaded to Play.
 name: Android
 
 on:
@@ -58,14 +58,11 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
-  play:
-    name: Closed testing
+  aab:
+    name: Release AAB
     needs: apk
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
-    concurrency:
-      group: play-closed-testing
-      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,33 +92,28 @@ jobs:
           PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         run: python3 scripts/ci-android-env.py keystore
 
-      - name: Service account file
-        env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: |
-          umask 077
-          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play-sa.json"
-
-      - name: Version code
-        id: version
-        env:
-          PLAY_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/play-sa.json
-        run: |
-          code=$(python3 scripts/play-closed-track.py version-code)
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-
       - name: Bundle release
         working-directory: android
-        run: ./gradlew :app:bundleRelease -Pwotcost.versionCode=${{ steps.version.outputs.code }}
+        run: ./gradlew :app:bundleRelease -Pwotcost.versionCode=${{ github.run_number }}
 
-      - name: Release note
+      - name: Check upload certificate
         env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: python3 scripts/play-closed-track.py note > "$RUNNER_TEMP/release-note.txt"
-
-      - name: Publish to closed testing
-        env:
-          PLAY_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/play-sa.json
           AAB_PATH: android/app/build/outputs/bundle/release/app-release.aab
-          RELEASE_NOTES_FILE: ${{ runner.temp }}/release-note.txt
-        run: python3 scripts/play-closed-track.py publish
+        run: python3 scripts/play-closed-track.py check-cert
+
+      - name: Name the AAB
+        id: aab
+        run: |
+          version=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)
+          sha=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
+          file="wotcost-${version}-${{ github.run_number }}-${sha}.aab"
+          cp android/app/build/outputs/bundle/release/app-release.aab "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.aab.outputs.file }}
+          path: ${{ steps.aab.outputs.file }}
+          if-no-files-found: error
+          compression-level: 0
