@@ -1,12 +1,13 @@
 # Every push: unit tests, then a debug APK artifact.
-# Push to master: after that, a signed AAB artifact. It is not uploaded to Play.
+# Push to master: that APK also replaces the GitHub Release tagged debug.
+# Push to master: a signed AAB artifact. It is not uploaded to Play.
 name: Android
 
 on:
   push:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -37,6 +38,11 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest
 
+      - name: Install debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: python3 scripts/ci-android-env.py debug-keystore
+
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug
@@ -49,6 +55,8 @@ jobs:
           file="wotcost-${version}-${sha}-debug.apk"
           cp android/app/build/outputs/apk/debug/app-debug.apk "$file"
           echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
@@ -57,6 +65,22 @@ jobs:
           path: ${{ steps.apk.outputs.file }}
           if-no-files-found: error
           compression-level: 0
+
+      - name: Publish debug APK
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          cp "${{ steps.apk.outputs.file }}" wotcost-debug.apk
+          python3 scripts/play-closed-track.py note > "$RUNNER_TEMP/apk-note.txt"
+          printf '\n\nТестовая сборка для установки в обход Play. Поверх копии из Play не встаёт.\n' >> "$RUNNER_TEMP/apk-note.txt"
+          gh release delete debug --yes --cleanup-tag || true
+          gh release create debug wotcost-debug.apk \
+            --target "$GITHUB_SHA" \
+            --title "wotcost ${{ steps.apk.outputs.version }} (${{ steps.apk.outputs.sha }})" \
+            --notes-file "$RUNNER_TEMP/apk-note.txt" \
+            --latest
 
   aab:
     name: Release AAB

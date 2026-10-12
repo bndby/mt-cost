@@ -11,6 +11,6 @@ alwaysApply: true
 
 Исходники `android/` входят в git. Не коммитить `credentials.json`, `*.jks`, `*.aab`, `android/keystore.properties`.
 
-Пуш в любую ветку: `.github/workflows/android.yml` гоняет юнит-тесты и кладёт debug APK в артефакты прогона. Пуш в `master` дополнительно подписывает AAB ключом загрузки и кладёт его в артефакты. На закрытое тестирование Play этот AAB не отправляется. `versionCode` сборки в CI — номер прогона. Локальный скрипт по-прежнему собирает AAB с `versionCode` из Gradle.
+Пуш в любую ветку: `.github/workflows/android.yml` гоняет юнит-тесты и кладёт debug APK в артефакты прогона. Пуш в `master` публикует этот APK в GitHub Release с тегом `debug` (файл `wotcost-debug.apk`, одна и та же подпись между прогонами) и дополнительно подписывает AAB ключом загрузки в артефакты. На закрытое тестирование Play AAB не отправляется. `versionCode` AAB в CI — номер прогона. Локальный скрипт по-прежнему собирает AAB с `versionCode` из Gradle.
 
 Экран на этой машине открывает эмулятор AVD `Medium_Phone_API_35`.

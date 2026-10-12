@@ -86,6 +86,16 @@ android {
     }
 
     signingConfigs {
+        // CI writes this file before assembleDebug so GitHub Release APKs share one key.
+        val debugStore = file("debug.keystore")
+        if (debugStore.exists()) {
+            getByName("debug") {
+                storeFile = debugStore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
         if (hasReleaseKey) {
             create("release") {
                 storeFile = file(keystoreProps.getProperty("storeFile"))

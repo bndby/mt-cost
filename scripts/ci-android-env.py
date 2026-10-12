@@ -3,6 +3,7 @@
 
 dotenv: .env from .env.example, with WG_APPLICATION_ID from the environment.
 keystore: Play upload key and android/keystore.properties from the environment.
+debug-keystore: stable debug key for the GitHub Release APK.
 
 Values are read from the environment so they are not command-line arguments.
 """
@@ -61,14 +62,26 @@ def write_keystore() -> None:
     print("signing: Play upload keystore")
 
 
+def write_debug_keystore() -> None:
+    raw = os.environ.get("DEBUG_KEYSTORE_BASE64", "").strip()
+    if not raw:
+        raise SystemExit("DEBUG_KEYSTORE_BASE64 secret is empty")
+    dest = ROOT / "android" / "app" / "debug.keystore"
+    dest.write_bytes(base64.b64decode(raw))
+    os.chmod(dest, 0o600)
+    print("signing: debug keystore")
+
+
 def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     if command == "dotenv":
         write_dotenv()
     elif command == "keystore":
         write_keystore()
+    elif command == "debug-keystore":
+        write_debug_keystore()
     else:
-        raise SystemExit("usage: ci-android-env.py dotenv|keystore")
+        raise SystemExit("usage: ci-android-env.py dotenv|keystore|debug-keystore")
 
 
 if __name__ == "__main__":
