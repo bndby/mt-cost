@@ -2,45 +2,28 @@
 .env.local
 .env.*.local
 google-service-account.json
-
-# dependencies
+credentials.json
+/certificates
 node_modules/
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
+# Android build output and secrets
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/android/keystore.properties
+/android/app/keystore.jks
+/android/.idea/
+*.iml
 *.jks
 *.aab
-credentials.json
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
+.kotlin/
 
 # macOS
 .DS_Store
 *.pem
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
-
-# 
-/certificates

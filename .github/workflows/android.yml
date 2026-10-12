@@ -1,0 +1,127 @@
+# Every push: unit tests, then a debug APK artifact.
+# Push to master: after that, a signed AAB rolled out to Play closed testing (track alpha).
+name: Android
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Write .env
+        env:
+          WG_APPLICATION_ID: ${{ secrets.WG_APPLICATION_ID }}
+        run: python3 scripts/ci-android-env.py dotenv
+
+      - name: Unit tests
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug
+
+      - name: Name the APK
+        id: apk
+        run: |
+          version=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)
+          sha=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
+          file="wotcost-${version}-${sha}-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.apk.outputs.file }}
+          path: ${{ steps.apk.outputs.file }}
+          if-no-files-found: error
+          compression-level: 0
+
+  play:
+    name: Closed testing
+    needs: apk
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: play-closed-testing
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Write .env
+        env:
+          WG_APPLICATION_ID: ${{ secrets.WG_APPLICATION_ID }}
+        run: python3 scripts/ci-android-env.py dotenv
+
+      - name: Install upload keystore
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: python3 scripts/ci-android-env.py keystore
+
+      - name: Service account file
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play-sa.json"
+
+      - name: Version code
+        id: version
+        env:
+          PLAY_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/play-sa.json
+        run: |
+          code=$(python3 scripts/play-closed-track.py version-code)
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Bundle release
+        working-directory: android
+        run: ./gradlew :app:bundleRelease -Pwotcost.versionCode=${{ steps.version.outputs.code }}
+
+      - name: Release note
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: python3 scripts/play-closed-track.py note > "$RUNNER_TEMP/release-note.txt"
+
+      - name: Publish to closed testing
+        env:
+          PLAY_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/play-sa.json
+          AAB_PATH: android/app/build/outputs/bundle/release/app-release.aab
+          RELEASE_NOTES_FILE: ${{ runner.temp }}/release-note.txt
+        run: python3 scripts/play-closed-track.py publish

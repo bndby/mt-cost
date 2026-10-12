@@ -1,21 +1,11 @@
 #!/usr/bin/env bash
-# Host Gradle Play App Bundle. Not EAS Docker (`eas build --local`).
+# Host Gradle Play App Bundle.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -f .env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
-
-VERSION="$(node -p "require('./package.json').version")"
-OUT="$ROOT/wotcost-${VERSION}.aab"
 CREDENTIALS="$ROOT/credentials.json"
-
 if [[ ! -f "$CREDENTIALS" ]]; then
   echo "missing credentials.json (Play keystore pointer; gitignored)" >&2
   exit 1
@@ -25,8 +15,6 @@ if [[ -z "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ]]; then
   echo "ANDROID_HOME / ANDROID_SDK_ROOT is not set" >&2
   exit 1
 fi
-
-CI=1 npx expo prebuild -p android
 
 python3 - <<'PY'
 import json
@@ -43,64 +31,25 @@ dest = root / "android" / "app" / "keystore.jks"
 dest.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(src, dest)
 
-props = root / "android" / "gradle.properties"
-text = props.read_text() if props.exists() else ""
-lines = [
-    line
-    for line in text.splitlines()
-    if not line.startswith("MYAPP_UPLOAD_")
-]
-lines.extend(
-    [
-        "MYAPP_UPLOAD_STORE_FILE=keystore.jks",
-        f"MYAPP_UPLOAD_KEY_ALIAS={ks['keyAlias']}",
-        f"MYAPP_UPLOAD_STORE_PASSWORD={ks['keystorePassword']}",
-        f"MYAPP_UPLOAD_KEY_PASSWORD={ks['keyPassword']}",
-    ]
-)
-props.write_text("\n".join(lines) + "\n")
+def prop(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
 
-gradle = root / "android" / "app" / "build.gradle"
-g = gradle.read_text()
-debug_only = """    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-    }"""
-with_release = """    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
-    }"""
-if debug_only not in g:
-    raise SystemExit("android/app/build.gradle signingConfigs block changed; cannot inject Play upload key")
-g = g.replace(debug_only, with_release, 1)
-release_debug = """            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug"""
-release_play = """            signingConfig signingConfigs.release"""
-if release_debug not in g:
-    raise SystemExit("android/app/build.gradle release still not on debug template; cannot switch to Play upload key")
-g = g.replace(release_debug, release_play, 1)
-if "signingConfig signingConfigs.release" not in g:
-    raise SystemExit("release buildType is still not using signingConfigs.release")
-gradle.write_text(g)
-print("signing: Play upload keystore + release signingConfig")
+lines = [
+    "storeFile=keystore.jks",
+    f"storePassword={prop(ks['keystorePassword'])}",
+    f"keyAlias={prop(ks['keyAlias'])}",
+    f"keyPassword={prop(ks['keyPassword'])}",
+]
+(root / "android" / "keystore.properties").write_text("\n".join(lines) + "\n")
+print("signing: Play upload keystore")
 PY
+
+VERSION="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)"
+OUT="$ROOT/wotcost-${VERSION}.aab"
 
 (
   cd android

@@ -246,7 +246,7 @@ pause "Enter, когда открыт Dashboard нового приложени�
 
 # ── 4. Service account + JSON ─────────────────────────────────────────────
 stage "Google Cloud: service account"
-say "EAS Submit ходит в Play Android Developer API от имени service account."
+say "Загрузка в Play Android Developer API идёт от имени service account."
 open_url "https://console.cloud.google.com/projectcreate"
 step "Создайте проект (или выберите уже существующий) и дождитесь, пока он станет активным."
 open_url "https://console.cloud.google.com/iam-admin/serviceaccounts"
@@ -309,21 +309,21 @@ step "Безопасность данных: передаём WG идентиф�
 step "Рейтинг контента: анкета утилиты, без насилия и покупок; обмен данными с WG — да."
 step "Доступ к приложению: да. Вставьте логин и пароль ТЕСТОВОГО аккаунта World of Tanks"
 step "только в форму Play (не в .env и не в чат). Инструкция рецензенту:"
-step "нажать «Войти», выбрать Реалм, ввести данные на странице WG, дождаться возврата."
+step "нажать карточку Реалма, ввести данные на странице WG, дождаться возврата."
 pause "Enter, когда декларации заполнены."
 
 # ── 8. Тестеры ────────────────────────────────────────────────────────────
 stage "Закрытое тестирование"
-say "AAB собирается на хосте (npm run build:android) и уходит в internal черновиком. Production — после 12 тестеров × 14 дней,"
-say "если аккаунт личный и создан после 13.11.2023. Organization и старые аккаунты — исключение."
+say "Пуш в master: GitHub Actions собирает AAB и выкатывает его на закрытое тестирование, не черновиком."
+say "Production — после 12 тестеров × 14 дней, если аккаунт личный и создан после 13.11.2023."
+say "Organization и старые аккаунты — исключение."
 open_url "https://play.google.com/console/u/0/developers"
-step "Test and release → Testing → Internal testing: после npm run submit:android опубликуйте черновик."
-step "Closed testing (не Internal): создайте список email, минимум 12 человек с запасом."
+step "Test and release → Testing → Closed testing: создайте список email, минимум 12 человек с запасом."
 step "Тестеры должны перейти по ссылке opt-in с Android-устройства и оставаться 14 дней."
 step "Когда порог выполнен: Dashboard → Apply for production."
 pause "Enter, когда список тестеров заведён (или аккаунт не требует закрытого теста)."
 
-note "Дальше в репозитории: npm run build:android && npm run submit:android"
-note "submit.production: track=internal, releaseStatus=draft, не отправляет на ревью."
+note "Локальный AAB: scripts/build-android-aab.sh"
+note "Пуш в master выкатывает AAB на закрытое тестирование. Списки тестеров Actions не меняет."
 
 finish
